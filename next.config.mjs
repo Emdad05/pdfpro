@@ -7,6 +7,14 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Serve PDF.js worker with correct MIME type for module workers
+        source: '/pdf.worker.min.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },

@@ -8,8 +8,7 @@ import FileUpload from '../../components/FileUpload';
 async function runConversion(file, userMode, onProgress, onStatus, abortSignal) {
   // Dynamic imports — keeps bundle small
   const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
   const { extractPageText, renderPageToImage } = await import('../../lib/pdfExtract');
   const { createPresentation, addTextSlide, addImageSlide, savePresentation } =

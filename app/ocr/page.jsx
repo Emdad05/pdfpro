@@ -22,7 +22,7 @@ export default function OCRPage() {
     setProcessing(true); setResult(''); setProgress(0);
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
       const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
       const total = pdf.numPages;
       const { createWorker } = await import('tesseract.js');
