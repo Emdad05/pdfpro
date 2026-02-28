@@ -37,10 +37,10 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
           label={`Drop your ${acceptLabel} here`}
           sublabel="Click to browse or drag and drop" />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 anim-scale-in">
 
           {/* File card */}
-          <div className="card p-4 flex items-center gap-4">
+          <div className="card p-4 flex items-center gap-4 anim-fade-down">
             <div className="w-10 h-10 border border-white/10 flex items-center justify-center flex-shrink-0"
               style={{background:'rgba(201,168,76,0.05)'}}>
               <span className="font-mono text-xs text-gold uppercase">{file.name.split('.').pop()}</span>
@@ -61,7 +61,7 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
 
           {/* Server waking warning */}
           {serverWarning && (
-            <div className="card p-4 flex gap-3" style={{borderColor:'rgba(201,168,76,0.2)'}}>
+            <div className="card p-4 flex gap-3 anim-slide-down" style={{borderColor:'rgba(201,168,76,0.2)'}}>
               <div className="w-0.5 self-stretch flex-shrink-0" style={{background:'rgba(201,168,76,0.4)'}} />
               <div>
                 <p className="font-mono text-xs text-gold mb-0.5">Server waking up</p>
@@ -72,13 +72,13 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
 
           {/* Progress */}
           {processing && (
-            <div className="card p-4">
+            <div className="card p-4 anim-fade-down">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-mono text-xs text-white/40">{status || 'Converting…'}</span>
                 <div className="flex gap-1 items-center">
                   {[0,1,2].map(i => (
                     <div key={i} className="w-1 h-1 rounded-full"
-                      style={{background:'var(--gold)', opacity: 0.6, animation:`pulse 1.2s ${i*0.2}s ease-in-out infinite`}} />
+                      style={{background:'var(--gold)', animation:`dotPulse 1.2s ${i*0.2}s ease-in-out infinite`}} />
                   ))}
                 </div>
               </div>
@@ -88,7 +88,7 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
 
           {/* Error */}
           {error && (
-            <div className="card p-4 flex gap-3" style={{borderColor:'rgba(239,68,68,0.2)'}}>
+            <div className="card p-4 flex gap-3 anim-slide-down" style={{borderColor:'rgba(239,68,68,0.2)'}}>
               <div className="w-0.5 self-stretch flex-shrink-0" style={{background:'rgba(239,68,68,0.5)'}} />
               <div>
                 <p className="font-mono text-xs text-red-400 mb-0.5">Conversion failed</p>
@@ -99,7 +99,7 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
 
           {/* Success */}
           {done && (
-            <div className="success-card">
+            <div className="success-card anim-scale-in">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-10 h-10 border border-gold-400/40 flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">

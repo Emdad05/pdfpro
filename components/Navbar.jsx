@@ -38,20 +38,20 @@ const toolGroups = [
   },
 ];
 
-const navLinks = [
-  { label: 'Features',        href: '/#features' },
-  { label: 'Tools',           href: '/#tools' },
-  { label: 'How to use',      href: '/#how' },
-  { label: 'Contact us',      href: 'mailto:emdadhussain840@gmail.com' },
-  { label: 'Privacy Policy',  href: '/privacy' },
-  { label: 'Terms of Service',href: '/terms' },
+const infoLinks = [
+  { label: 'Features',         href: '/#features' },
+  { label: 'Tools',            href: '/#tools' },
+  { label: 'How to use',       href: '/#how' },
+  { label: 'Contact us',       href: 'mailto:emdadhussain840@gmail.com', external: true },
+  { label: 'Privacy Policy',   href: '/privacy' },
+  { label: 'Terms of Service', href: '/terms' },
 ];
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen]           = useState(false);
-  const [toolsOpen, setToolsOpen]         = useState(false);
-  const [scrolled, setScrolled]           = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(true);
+  const [menuOpen,       setMenuOpen]       = useState(false);
+  const [toolsOpen,      setToolsOpen]      = useState(false);
+  const [scrolled,       setScrolled]       = useState(false);
+  const [termsAccepted,  setTermsAccepted]  = useState(true);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -69,9 +69,9 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Terms banner (bottom) ─────────────────────── */}
+      {/* ── Terms banner ─────────────────────────────── */}
       {!termsAccepted && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/8"
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/8 anim-slide-up"
           style={{background:'rgba(8,8,8,0.97)', backdropFilter:'blur(16px)'}}>
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
             <p className="font-mono text-xs text-white/40 leading-relaxed">
@@ -90,7 +90,7 @@ export default function Navbar() {
       )}
 
       {/* ── Navbar ───────────────────────────────────── */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled ? 'navbar' : 'bg-transparent border-b border-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -98,7 +98,8 @@ export default function Navbar() {
 
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-6 h-6 border border-gold-400/50 flex items-center justify-center group-hover:border-gold-400 transition-colors">
+              <div className="w-6 h-6 border border-gold-400/50 flex items-center justify-center transition-colors duration-200 group-hover:border-gold-400"
+                style={{transition:'border-color 0.2s'}}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M2 2h5l3 3v5H2V2z" stroke="#C9A84C" strokeWidth="0.8"/>
                   <path d="M7 2v3h3" stroke="#C9A84C" strokeWidth="0.8"/>
@@ -109,31 +110,33 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Desktop: Tools dropdown + key links */}
+            {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-7">
+              {/* Tools dropdown */}
               <div className="relative"
                 onMouseEnter={() => setToolsOpen(true)}
                 onMouseLeave={() => setToolsOpen(false)}>
-                <button className="label flex items-center gap-1.5 hover:text-gold transition-colors py-2">
+                <button className="label flex items-center gap-1.5 hover:text-gold transition-colors duration-150 py-2">
                   Tools
-                  <svg className={`w-3 h-3 transition-transform duration-200 ${toolsOpen ? 'rotate-180' : ''}`}
+                  <svg className="w-3 h-3 transition-transform duration-200"
+                    style={{transform: toolsOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
 
                 {toolsOpen && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-0 w-[520px] card p-5 shadow-2xl shadow-black"
-                    style={{background:'rgba(8,8,8,0.99)', borderColor:'rgba(255,255,255,0.08)'}}>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-0 w-[520px] card anim-fade-down"
+                    style={{background:'rgba(8,8,8,0.99)', borderColor:'rgba(255,255,255,0.08)', padding:'1.25rem'}}>
                     <div className="absolute top-0 left-8 right-8 h-px"
                       style={{background:'linear-gradient(90deg,transparent,rgba(201,168,76,0.5),transparent)'}} />
-                    <div className="grid grid-cols-3 gap-5">
+                    <div className="grid grid-cols-3 gap-5 stagger">
                       {toolGroups.map(g => (
                         <div key={g.label}>
                           <p className="label-gold mb-2.5">{g.label}</p>
                           {g.tools.map(t => (
                             <Link key={t.href} href={t.href}
-                              className="block py-1 px-2 font-mono text-xs text-white/35 hover:text-white/75 hover:bg-white/3 transition-all">
+                              className="block py-1 px-2 font-mono text-xs text-white/35 hover:text-white/80 transition-colors duration-150 rounded-sm hover:bg-white/3">
                               {t.label}
                             </Link>
                           ))}
@@ -144,9 +147,9 @@ export default function Navbar() {
                 )}
               </div>
 
-              <Link href="/#features" className="label hover:text-gold transition-colors">Features</Link>
-              <Link href="/#how"      className="label hover:text-gold transition-colors">How to use</Link>
-              <a href="mailto:emdadhussain840@gmail.com" className="label hover:text-gold transition-colors">Contact</a>
+              <Link href="/#features" className="label hover:text-gold transition-colors duration-150">Features</Link>
+              <Link href="/#how"      className="label hover:text-gold transition-colors duration-150">How to use</Link>
+              <a href="mailto:emdadhussain840@gmail.com" className="label hover:text-gold transition-colors duration-150">Contact</a>
             </nav>
 
             {/* Right */}
@@ -157,19 +160,17 @@ export default function Navbar() {
                 <span className="label" style={{color:'rgba(201,168,76,0.7)'}}>Private</span>
               </div>
 
-              {/* Hamburger — always visible */}
-              <button onClick={() => setMenuOpen(!menuOpen)}
-                className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white transition-colors border border-transparent hover:border-white/10"
-                aria-label="Open menu">
-                {menuOpen ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 6h16M4 12h16M4 18h16"/>
-                  </svg>
-                )}
+              {/* Hamburger */}
+              <button onClick={() => setMenuOpen(o => !o)}
+                className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white transition-colors duration-150 border border-transparent hover:border-white/10"
+                aria-label="Menu">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  style={{transition:'all 0.2s'}}>
+                  {menuOpen
+                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M6 18L18 6M6 6l12 12"/>
+                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 6h16M4 12h16M4 18h16"/>
+                  }
+                </svg>
               </button>
             </div>
           </div>
@@ -177,19 +178,18 @@ export default function Navbar() {
 
         {/* ── Full menu panel ──────────────────────────── */}
         {menuOpen && (
-          <div className="border-t border-white/5"
+          <div className="border-t border-white/5 anim-slide-down"
             style={{background:'rgba(8,8,8,0.99)', backdropFilter:'blur(20px)'}}>
             <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-10 stagger">
 
-                {/* Tool groups */}
                 {toolGroups.map(g => (
                   <div key={g.label}>
                     <p className="label-gold mb-4">{g.label}</p>
                     <div className="space-y-0.5">
                       {g.tools.map(t => (
                         <Link key={t.href} href={t.href} onClick={close}
-                          className="block py-1.5 font-mono text-xs text-white/35 hover:text-white/75 transition-colors">
+                          className="block py-1.5 font-mono text-xs text-white/35 hover:text-white/80 transition-colors duration-150">
                           {t.label}
                         </Link>
                       ))}
@@ -201,32 +201,27 @@ export default function Navbar() {
                 <div>
                   <p className="label-gold mb-4">Menu</p>
                   <div className="space-y-0.5">
-                    {navLinks.map(l => (
-                      l.href.startsWith('mailto') ? (
+                    {infoLinks.map(l => (
+                      l.external ? (
                         <a key={l.label} href={l.href}
-                          className="block py-1.5 font-mono text-xs text-white/35 hover:text-white/75 transition-colors">
+                          className="block py-1.5 font-mono text-xs text-white/35 hover:text-white/80 transition-colors duration-150">
                           {l.label}
                         </a>
                       ) : (
                         <Link key={l.label} href={l.href} onClick={close}
-                          className="block py-1.5 font-mono text-xs text-white/35 hover:text-white/75 transition-colors">
+                          className="block py-1.5 font-mono text-xs text-white/35 hover:text-white/80 transition-colors duration-150">
                           {l.label}
                         </Link>
                       )
                     ))}
                   </div>
 
-                  {/* Terms notice inside menu */}
-                  <div className="mt-8 pt-6 border-t border-white/5">
+                  <div className="mt-8 pt-5 border-t border-white/5">
                     <p className="font-mono text-xs text-white/20 leading-relaxed">
                       By using PDFPro you agree to our{' '}
-                      <Link href="/terms" onClick={close} className="text-gold/50 hover:text-gold transition-colors">
-                        Terms of Service
-                      </Link>
+                      <Link href="/terms" onClick={close} className="text-gold/50 hover:text-gold transition-colors">Terms of Service</Link>
                       {' '}and{' '}
-                      <Link href="/privacy" onClick={close} className="text-gold/50 hover:text-gold transition-colors">
-                        Privacy Policy
-                      </Link>.
+                      <Link href="/privacy" onClick={close} className="text-gold/50 hover:text-gold transition-colors">Privacy Policy</Link>.
                     </p>
                   </div>
                 </div>

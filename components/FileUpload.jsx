@@ -10,7 +10,7 @@ export default function FileUpload({ onFiles, multiple = false, accept, label, s
   });
 
   return (
-    <div {...getRootProps()} className={`drop-zone p-12 sm:p-20 text-center ${isDragActive ? 'active' : ''}`}>
+    <div {...getRootProps()} className={`drop-zone p-12 sm:p-20 text-center anim-scale-in ${isDragActive ? 'active' : ''}`}>
       <input {...getInputProps()} />
 
       {/* Icon */}

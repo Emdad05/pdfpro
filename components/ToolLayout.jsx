@@ -9,7 +9,7 @@ export default function ToolLayout({ title, description, icon, isServer = false,
       <Background />
       <Navbar />
 
-      <main className="relative z-10 flex-1 pt-14">
+      <main className="relative z-10 flex-1 pt-14 anim-fade-down">
         {/* Tool header */}
         <div className="border-b border-white/5" style={{background:'rgba(255,255,255,0.01)'}}>
           <div className="max-w-4xl mx-auto px-6 lg:px-8 py-10">

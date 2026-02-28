@@ -20,21 +20,12 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     config.resolve.alias.canvas   = false;
     config.resolve.alias.encoding = false;
-
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false, path: false, crypto: false,
       };
     }
-
-    // Allow Next.js to bundle .mjs worker files (pdfjs-dist v4)
-    config.module.rules.push({
-      test: /pdf\.worker(\.min)?\.mjs$/,
-      type: 'asset/resource',
-      generator: { filename: 'static/worker/[hash][ext][query]' },
-    });
-
     return config;
   },
 };
