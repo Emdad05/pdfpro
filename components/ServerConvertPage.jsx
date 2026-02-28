@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
-import ToolLayout from '../../components/ToolLayout';
-import FileUpload from '../../components/FileUpload';
-import { convertViaServer, downloadBlob } from '../../lib/serverConvert';
+import ToolLayout from './ToolLayout';
+import FileUpload from './FileUpload';
+import { convertViaServer, downloadBlob } from '../lib/serverConvert';
 
 export default function ServerConvertPage({ title, icon, description, accept, acceptLabel, convertType, outputExt, outputLabel }) {
   const [file, setFile] = useState(null);
