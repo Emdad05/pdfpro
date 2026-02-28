@@ -8,6 +8,7 @@ import FileUpload from '../../components/FileUpload';
 async function runConversion(file, userMode, onProgress, onStatus, abortSignal) {
   // Dynamic imports — keeps bundle small
   const pdfjsLib = await import('pdfjs-dist');
+// Use self-hosted worker (copied to /public at build time via scripts/copy-worker.mjs)
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
   const { extractPageText, renderPageToImage } = await import('../../lib/pdfExtract');
