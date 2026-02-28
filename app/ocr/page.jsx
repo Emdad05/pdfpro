@@ -22,8 +22,8 @@ export default function OCRPage() {
     setProcessing(true); setResult(''); setProgress(0);
     try {
       const pdfjsLib = await import('pdfjs-dist');
-    // Use self-hosted worker (copied to /public at build time via scripts/copy-worker.mjs)
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+      const { setupPdfWorker } = await import('../../lib/pdfWorker');
+      await setupPdfWorker(pdfjsLib);
       const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
       const total = pdf.numPages;
       const { createWorker } = await import('tesseract.js');

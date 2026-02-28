@@ -15,7 +15,7 @@ export default function Contact() {
     // Since we have no backend for contact, open mailto
     const body = encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`);
     const subject = encodeURIComponent(form.subject || 'PDFPro Enquiry');
-    window.location.href = `mailto:support@pdfpro.app?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:emdadhussain840@gmail.com?subject=${subject}&body=${body}`;
     setSent(true);
   };
 
