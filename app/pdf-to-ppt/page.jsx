@@ -3,428 +3,286 @@ import { useState, useRef } from 'react';
 import ToolLayout from '../../components/ToolLayout';
 import FileUpload from '../../components/FileUpload';
 
-// ─── Conversion engine ────────────────────────────────────────────────────────
-
-async function runConversion(file, userMode, onProgress, onStatus, abortSignal) {
-  // Dynamic imports — keeps bundle small
+async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
   const pdfjsLib = await import('pdfjs-dist');
-// Use self-hosted worker (copied to /public at build time via scripts/copy-worker.mjs)
   const { setupPdfWorker } = await import('../../lib/pdfWorker');
-  await setupPdfWorker(pdfjsLib);
+  setupPdfWorker(pdfjsLib);
 
   const { extractPageText, renderPageToImage } = await import('../../lib/pdfExtract');
   const { createPresentation, addTextSlide, addImageSlide, savePresentation } =
     await import('../../lib/pptxBuilder');
 
   onStatus('Loading PDF…');
-  const pdf       = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-  const numPages  = pdf.numPages;
+  const pdf      = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const numPages = pdf.numPages;
 
-  // Detect orientation from first page
-  const firstPage    = await pdf.getPage(1);
-  const firstVP      = firstPage.getViewport({ scale: 1 });
-  const isLandscape  = firstVP.width > firstVP.height;
-  const autoTextMode = isLandscape;
+  const firstPage = await pdf.getPage(1);
+  const firstVP   = firstPage.getViewport({ scale: 1 });
+  const isLandscape = firstVP.width > firstVP.height;
 
-  const useText = userMode === 'auto'   ? autoTextMode
-                : userMode === 'text'   ? true
-                : false;  // 'image'
+  // Default: image mode always — no double-layer text
+  // Text mode only when explicitly selected
+  const useText = mode === 'text';
 
-  // Initialize pptxgenjs with the page dimensions of page 1
   const prs = await createPresentation(firstVP.width, firstVP.height);
 
-  const stats = {
-    textSlides:  0,
-    imageSlides: 0,
-    totalRuns:   0,
-    fontFaces:   new Set(),
-  };
-
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-    // Check for abort signal
-    if (abortSignal.aborted) {
-      throw new Error('Conversion cancelled by user.');
-    }
+    if (abortSignal?.aborted) throw new Error('Cancelled');
 
-    const pct = Math.round((pageNum - 0.5) / numPages * 90);
-    onProgress(pct);
-    onStatus(`Processing page ${pageNum} / ${numPages}…`);
+    onProgress(Math.round((pageNum - 0.5) / numPages * 90));
+    onStatus(`Page ${pageNum} of ${numPages}`);
 
-    const page     = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({ scale: 1 });
-    const pageW    = viewport.width;
-    const pageH    = viewport.height;
-    const pageLand = pageW > pageH;
+    const page = await pdf.getPage(pageNum);
+    const vp   = page.getViewport({ scale: 1 });
 
-    if (useText && pageLand) {
-      // ── Text extraction mode ──────────────────────────────────────────────
-      onStatus(`Extracting text from page ${pageNum}…`);
+    if (useText) {
+      // Text mode: extract text WITHOUT background image to avoid double layer
+      // White background + positioned text boxes only
+      onStatus(`Extracting text — page ${pageNum}`);
       const { lines } = await extractPageText(page, pdfjsLib);
-
-      // For hybrid quality: render a clean background image (removes text layer),
-      // then overlay editable text boxes — so images/shapes are preserved perfectly.
-      onStatus(`Rendering background for page ${pageNum}…`);
-      const bgImg = await renderPageToImage(page, 1.5, 0.85);
-
-      addTextSlide(prs, bgImg, lines, pageW, pageH);
-
-      stats.textSlides++;
-      stats.totalRuns += lines.reduce((s, l) => s + l.runs.length, 0);
-      for (const line of lines)
-        for (const run of line.runs)
-          stats.fontFaces.add(run.fontFace);
-
+      // Pass null for background — white slide with text only (no double layer)
+      addTextSlide(prs, null, lines, vp.width, vp.height);
     } else {
-      // ── Image slide fallback ──────────────────────────────────────────────
-      onStatus(`Rendering page ${pageNum} as image…`);
-      const img = await renderPageToImage(page, 2.0, 0.94);
-      addImageSlide(prs, img, pageW, pageH);
-      stats.imageSlides++;
+      // Image mode (default): render page as crisp image — perfect fidelity
+      onStatus(`Rendering page ${pageNum}`);
+      const img = await renderPageToImage(page, 2.5, 0.95);
+      addImageSlide(prs, img, vp.width, vp.height);
     }
   }
 
   onProgress(95);
-  onStatus('Building PPTX file…');
-  const outName = file.name.replace(/\.pdf$/i, '.pptx');
-  await savePresentation(prs, outName);
-
+  onStatus('Building PPTX…');
+  await savePresentation(prs, file.name.replace(/\.pdf$/i, '.pptx'));
   onProgress(100);
-  onStatus('Done!');
-  return { ...stats, fontFaces: [...stats.fontFaces], numPages, isLandscape };
+  onStatus('Complete');
+  return { numPages, isLandscape };
 }
 
-// ─── UI ───────────────────────────────────────────────────────────────────────
-
-const MODE_OPTIONS = [
+const MODES = [
   {
-    id:   'auto',
-    icon: '🤖',
-    title: 'Auto',
-    desc: 'Text mode for landscape, image for portrait',
-    badge: 'Recommended',
+    id:    'image',
+    title: 'Image',
+    desc:  'Each page as a perfect image. Looks identical to PDF.',
+    tag:   'Recommended',
   },
   {
-    id:   'text',
-    icon: '✏️',
-    title: 'Text Mode',
-    desc: 'Extract editable text with font styles',
-    badge: 'Best for slides',
-  },
-  {
-    id:   'image',
-    icon: '🖼️',
-    title: 'Image Mode',
-    desc: 'Each page becomes a slide image',
-    badge: 'Always perfect look',
+    id:    'text',
+    title: 'Editable Text',
+    desc:  'Extract text with fonts. Best for landscape slide PDFs.',
+    tag:   'Editable',
   },
 ];
 
 export default function PDFtoPPT() {
   const [file,       setFile]       = useState(null);
-  const [mode,       setMode]       = useState('auto');
+  const [mode,       setMode]       = useState('image');
   const [processing, setProcessing] = useState(false);
   const [progress,   setProgress]   = useState(0);
   const [status,     setStatus]     = useState('');
   const [result,     setResult]     = useState(null);
   const [error,      setError]      = useState('');
-  const abortRef = useRef(false);
+  const abortRef  = useRef(null);
+  const topRef    = useRef(null);
 
   const handleFile = (accepted) => {
-    setFile(accepted[0]);
-    setResult(null);
-    setError('');
-    setProgress(0);
+    setFile(accepted[0]); setResult(null); setError(''); setProgress(0);
   };
 
   const convert = async () => {
     if (!file) return;
+    // Scroll to top so user sees progress — FIX for scroll jump issue
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     const controller = new AbortController();
     abortRef.current = controller;
-    setProcessing(true);
-    setError('');
-    setResult(null);
-    setProgress(0);
+    setProcessing(true); setError(''); setResult(null); setProgress(0);
 
     try {
-      const stats = await runConversion(
-        file,
-        mode,
-        (pct) => setProgress(pct),
-        (msg) => setStatus(msg),
+      const stats = await runConversion(file, mode,
+        pct => setProgress(pct),
+        msg => setStatus(msg),
         controller.signal,
       );
       setResult(stats);
     } catch (e) {
-      console.error(e);
-      setError(e.message || 'Conversion failed. Please try again.');
+      if (e.message !== 'Cancelled') setError(e.message || 'Conversion failed.');
     }
-
-    setProcessing(false);
-    setStatus('');
+    setProcessing(false); setStatus('');
   };
 
-  const reset = () => {
-    setFile(null);
-    setResult(null);
-    setError('');
-    setProgress(0);
-    setStatus('');
-  };
+  const cancel = () => abortRef.current?.abort();
+  const reset  = () => { setFile(null); setResult(null); setError(''); setProgress(0); };
 
   return (
-    <ToolLayout
-      title="PDF to PPT"
-      icon="📊"
-      description="Convert PDF to editable PowerPoint. Preserves font size, bold, italic, and text positions."
-    >
+    <ToolLayout title="PDF to PPT" description="Convert PDF slides to PowerPoint. Image mode gives perfect fidelity; text mode extracts editable content.">
+      <div ref={topRef} />
       {!file ? (
-        <FileUpload
-          onFiles={handleFile}
-          label="Drop your PDF here"
-          sublabel="Landscape PDFs (from PowerPoint) give best results"
-        />
+        <FileUpload onFiles={handleFile} label="Drop your PDF here" sublabel="Click to browse" />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
 
-          {/* File card */}
-          <div className="card p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-              style={{ background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.2)' }}>
-              📄
+          {/* File row */}
+          <div className="card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 border border-white/10 flex items-center justify-center flex-shrink-0"
+              style={{background:'rgba(201,168,76,0.05)'}}>
+              <span className="font-mono text-xs text-gold uppercase">PDF</span>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-white truncate">{file.name}</p>
-              <p className="text-sm text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-mono text-sm text-white truncate">{file.name}</p>
+              <p className="font-mono text-xs text-white/30">{(file.size/1024).toFixed(1)} KB</p>
             </div>
-            {!processing && (
-              <button onClick={reset} className="text-slate-500 hover:text-red-400 transition-colors flex-shrink-0 p-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            {!processing && !result && (
+              <button onClick={reset} className="p-1 text-white/20 hover:text-white/60 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             )}
           </div>
 
-          {/* Mode selector */}
+          {/* Mode selector — only show when not processing */}
           {!processing && !result && (
-            <div className="card p-5">
-              <h3 className="font-display font-semibold text-white mb-4">Conversion Mode</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {MODE_OPTIONS.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setMode(m.id)}
+            <div className="card p-4">
+              <p className="label-gold mb-3">Conversion Mode</p>
+              <div className="grid grid-cols-2 gap-2">
+                {MODES.map(m => (
+                  <button key={m.id} onClick={() => setMode(m.id)}
                     className={`option-btn text-left relative ${mode === m.id ? 'active' : ''}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-xl">{m.icon}</span>
-                      <span className="font-semibold text-sm">{m.title}</span>
-                    </div>
-                    <p className="text-xs opacity-60 leading-relaxed">{m.desc}</p>
-                    {m.badge && (
-                      <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                        style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.25)' }}>
-                        {m.badge}
+                    style={{padding:'0.75rem'}}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-xs font-medium"
+                        style={{color: mode===m.id ? 'var(--gold)' : 'rgba(255,255,255,0.6)'}}>
+                        {m.title}
                       </span>
-                    )}
+                      <span className="font-mono text-xs px-1.5 py-0.5"
+                        style={{
+                          background:'rgba(201,168,76,0.1)',
+                          color:'rgba(201,168,76,0.7)',
+                          border:'1px solid rgba(201,168,76,0.2)',
+                          fontSize:'9px',
+                          letterSpacing:'0.05em',
+                        }}>
+                        {m.tag}
+                      </span>
+                    </div>
+                    <p className="font-mono text-xs text-white/30 leading-relaxed">{m.desc}</p>
                   </button>
                 ))}
-              </div>
-
-              {/* Mode explanation */}
-              <div className="mt-4 rounded-xl p-4 text-sm leading-relaxed"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {mode === 'auto' && (
-                  <p className="text-slate-400">
-                    <span className="text-gold font-semibold">Auto mode:</span> Landscape pages (typical
-                    PowerPoint exports) use <strong className="text-white">text extraction</strong> — fonts,
-                    bold, italic, and positions are preserved and editable in PowerPoint.
-                    Portrait pages fall back to image slides automatically.
-                  </p>
-                )}
-                {mode === 'text' && (
-                  <p className="text-slate-400">
-                    <span className="text-white font-semibold">Text mode:</span> Extracts every text run with
-                    its <strong className="text-white">exact font size, bold/italic style, color, and
-                    position</strong>. Best for PDFs originally made in PowerPoint, Keynote, or Canva.
-                    Complex portrait PDFs (articles, reports) may have layout quirks.
-                  </p>
-                )}
-                {mode === 'image' && (
-                  <p className="text-slate-400">
-                    <span className="text-white font-semibold">Image mode:</span> Each page is rendered as a
-                    high-resolution image and placed on a slide.
-                    Looks <strong className="text-white">100% identical</strong> to the PDF but text
-                    is not editable. Great for sharing or archiving.
-                  </p>
-                )}
-              </div>
-
-              {/* Font info panel */}
-              <div className="mt-3 rounded-xl p-4"
-                style={{ background: 'rgba(201,168,76,0.04)', border: '1px solid rgba(201,168,76,0.1)' }}>
-                <p className="text-xs text-gold font-semibold uppercase tracking-wider mb-2">
-                  What gets preserved in Text Mode
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { icon: '📐', label: 'Font size' },
-                    { icon: '𝐁',  label: 'Bold' },
-                    { icon: '𝑰',  label: 'Italic' },
-                    { icon: '🎨', label: 'Color' },
-                    { icon: '📍', label: 'Position' },
-                    { icon: '🔤', label: 'Font face' },
-                    { icon: '📏', label: 'Slide size' },
-                    { icon: '🖼️', label: 'Background' },
-                  ].map(f => (
-                    <div key={f.label} className="flex items-center gap-1.5 text-xs text-slate-300">
-                      <span>{f.icon}</span>
-                      <span>{f.label}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           )}
 
-          {/* Progress */}
+          {/* Processing panel */}
           {processing && (
-            <div className="card p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-slate-300 font-medium">{status}</span>
-                <span className="text-gold font-bold font-display">{progress}%</span>
+            <div className="card p-5 anim-scale-in">
+              <div className="flex items-center gap-3 mb-4">
+                {/* Animated icon */}
+                <div className="w-10 h-10 border border-gold-400/30 flex items-center justify-center flex-shrink-0"
+                  style={{background:'rgba(201,168,76,0.05)'}}>
+                  <svg className="w-4 h-4 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                    <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-mono text-xs text-gold mb-0.5">Converting</p>
+                  <p className="font-mono text-xs text-white/40">{status}</p>
+                </div>
+                <span className="font-display text-2xl font-light text-white">{progress}%</span>
               </div>
-              <div className="progress-track mb-3">
-                <div className="progress-fill transition-all duration-500" style={{ width: `${Math.max(progress, 3)}%` }} />
+
+              {/* Progress bar */}
+              <div className="progress-track mb-4">
+                <div className="progress-fill" style={{width:`${Math.max(progress,2)}%`, transition:'width 0.4s ease'}} />
               </div>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                {[
-                  { icon: '📄', label: 'Parsing PDF' },
-                  { icon: '✂️', label: 'Extracting text' },
-                  { icon: '📊', label: 'Building PPTX' },
-                ].map((step, i) => {
-                  const active = i === 0 ? progress < 33 : i === 1 ? progress < 85 : progress >= 85;
+
+              {/* Stage indicators */}
+              <div className="flex gap-0 text-xs">
+                {['Loading','Rendering','Building','Done'].map((stage, i) => {
+                  const stageProgress = [0, 10, 90, 100];
+                  const active = progress >= stageProgress[i];
                   return (
-                    <div key={step.label} className={`rounded-xl p-3 transition-all ${active ? 'bg-gold-400/10 border border-gold-400/20' : 'bg-white/3 border border-white/5'}`}>
-                      <p className="text-lg mb-0.5">{step.icon}</p>
-                      <p className={`text-xs ${active ? 'text-gold' : 'text-slate-500'}`}>{step.label}</p>
+                    <div key={stage} className="flex-1 text-center">
+                      <div className="h-0.5 mb-1.5" style={{
+                        background: active ? 'var(--gold)' : 'rgba(255,255,255,0.08)',
+                        transition: 'background 0.3s'
+                      }}/>
+                      <span className="font-mono" style={{
+                        fontSize:'9px',
+                        letterSpacing:'0.08em',
+                        color: active ? 'rgba(201,168,76,0.8)' : 'rgba(255,255,255,0.2)',
+                        transition: 'color 0.3s'
+                      }}>
+                        {stage.toUpperCase()}
+                      </span>
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Cancel */}
+              <div className="mt-4 flex justify-center">
+                <button onClick={cancel}
+                  className="font-mono text-xs text-white/20 hover:text-white/50 transition-colors">
+                  Cancel
+                </button>
               </div>
             </div>
           )}
 
           {/* Error */}
-          {error && !processing && (
-            <div className="card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)' }}>
-              <p className="text-red-400 text-sm">❌ {error}</p>
-            </div>
-          )}
-
-          {/* Result */}
-          {result && !processing && (
-            <div className="space-y-4">
-              <div className="success-card text-left">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="text-4xl">✅</div>
-                  <div>
-                    <p className="font-display font-bold text-gold text-xl">Conversion complete!</p>
-                    <p className="text-slate-400 text-sm">Your PPTX has been downloaded.</p>
-                  </div>
-                </div>
-
-                {/* Stats grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                  {[
-                    { label: 'Total pages',   value: result.numPages,                  icon: '📄' },
-                    { label: 'Text slides',   value: result.textSlides,                icon: '✏️' },
-                    { label: 'Image slides',  value: result.imageSlides,               icon: '🖼️' },
-                    { label: 'Text runs',     value: result.totalRuns.toLocaleString(), icon: '🔤' },
-                  ].map(s => (
-                    <div key={s.label} className="rounded-xl p-3 text-center"
-                      style={{ background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.15)' }}>
-                      <p className="text-lg mb-0.5">{s.icon}</p>
-                      <p className="font-display font-bold text-gold text-xl">{s.value}</p>
-                      <p className="text-xs text-slate-500">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Fonts detected */}
-                {result.fontFaces?.length > 0 && (
-                  <div className="rounded-xl p-3 mb-4" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                    <p className="text-xs text-slate-500 mb-2">Fonts detected in document</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {result.fontFaces.filter(Boolean).slice(0, 12).map(f => (
-                        <span key={f} className="text-xs px-2 py-0.5 rounded-md font-mono"
-                          style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tips */}
-                <div className="rounded-xl p-4" style={{ background: 'rgba(251,146,60,0.06)', border: '1px solid rgba(251,146,60,0.15)' }}>
-                  <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">💡 Tips for best results</p>
-                  <ul className="text-xs text-amber-300/70 space-y-1">
-                    <li>• If font faces aren't installed on your system, PowerPoint substitutes similar ones</li>
-                    <li>• Text layer is overlaid on the background image — layouts stay accurate</li>
-                    <li>• Portrait slides automatically used Image mode for perfect appearance</li>
-                  </ul>
-                </div>
-
-                <div className="flex gap-3 mt-4">
-                  <button onClick={reset} className="btn-ghost flex-1 justify-center">
-                    Convert another PDF
-                  </button>
-                </div>
+          {error && (
+            <div className="card p-4 flex gap-3 anim-slide-down" style={{borderColor:'rgba(239,68,68,0.2)'}}>
+              <div className="w-0.5 self-stretch flex-shrink-0" style={{background:'rgba(239,68,68,0.5)'}}/>
+              <div>
+                <p className="font-mono text-xs text-red-400 mb-0.5">Conversion failed</p>
+                <p className="font-mono text-xs text-white/30">{error}</p>
               </div>
             </div>
           )}
 
-          {/* Cancel button shown while processing */}
-          {processing && (
-            <div className="flex justify-center mt-2">
-              <button
-                onClick={() => abortRef.current?.abort?.()}
-                className="btn-ghost text-sm px-6"
-              >
-                ✕ Cancel
-              </button>
+          {/* Success */}
+          {result && (
+            <div className="success-card anim-scale-in">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 border border-gold-400/40 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-display text-xl font-light text-white">PPTX downloaded</p>
+                  <p className="font-mono text-xs text-white/30 mt-0.5">
+                    {result.numPages} slide{result.numPages !== 1 ? 's' : ''} · {mode === 'image' ? 'Image mode' : 'Text mode'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={convert} className="btn-primary flex-1 justify-center" style={{fontSize:'11px',padding:'0.6rem 1rem'}}>
+                  Convert again
+                </button>
+                <button onClick={reset} className="btn-ghost" style={{fontSize:'11px',padding:'0.6rem 1rem'}}>
+                  New file
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Convert button */}
+          {/* Action buttons */}
           {!processing && !result && (
-            <div className="flex gap-3">
-              <button
-                onClick={convert}
-                disabled={processing}
-                className="btn-primary flex-1 justify-center py-4 text-base"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <div className="flex gap-2 pt-1">
+              <button onClick={convert} className="btn-primary flex-1 justify-center" style={{padding:'0.7rem 1rem', fontSize:'12px'}}>
+                Convert to PPTX
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                 </svg>
-                Convert to PowerPoint
               </button>
-              <button onClick={reset} className="btn-ghost">Reset</button>
-            </div>
-          )}
-
-          {/* Quality note */}
-          {!processing && !result && (
-            <div className="flex items-start gap-3 text-xs text-slate-500 px-1">
-              <span className="text-base flex-shrink-0">ℹ️</span>
-              <p>
-                <strong className="text-slate-400">Best results:</strong> Landscape PDFs originally
-                exported from PowerPoint. The converter detects font styles by reading internal PDF
-                font descriptors — bold, italic, font name, size, color, and exact position are all
-                extracted and mapped to editable PowerPoint text boxes.
-              </p>
+              <button onClick={reset} className="btn-ghost" style={{padding:'0.7rem 1rem', fontSize:'12px'}}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Reset
+              </button>
             </div>
           )}
         </div>

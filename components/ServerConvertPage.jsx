@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import ToolLayout from './ToolLayout';
 import FileUpload from './FileUpload';
 import { convertViaServer, downloadBlob } from '../lib/serverConvert';
@@ -12,10 +12,12 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
   const [error, setError]             = useState('');
   const [serverWarning, setServerWarning] = useState(false);
 
+  const topRef = useRef(null);
   const handleFile = (accepted) => { setFile(accepted[0]); setDone(false); setError(''); };
   const reset = () => { setFile(null); setDone(false); setError(''); setStatus(''); };
 
   const convert = async () => {
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setProcessing(true); setError(''); setServerWarning(false);
     const warnTimer = setTimeout(() => setServerWarning(true), 5000);
     try {
@@ -32,6 +34,7 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
 
   return (
     <ToolLayout title={title} icon={icon} description={description} isServer>
+      <div ref={topRef} />
       {!file ? (
         <FileUpload onFiles={handleFile} accept={accept}
           label={`Drop your ${acceptLabel} here`}
@@ -121,7 +124,7 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
           {!done && (
             <div className="flex gap-3 pt-2">
               {/* Convert — primary gold */}
-              <button onClick={convert} disabled={processing} className="btn-primary flex-1 justify-center">
+              <button onClick={convert} disabled={processing} className="btn-primary flex-1 justify-center" style={{padding:'0.7rem 1rem',fontSize:'12px'}}>
                 {processing ? (
                   <>
                     <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -141,8 +144,7 @@ export default function ServerConvertPage({ title, icon, description, accept, ac
               </button>
 
               {/* Reset — ghost */}
-              <button onClick={reset} disabled={processing} className="btn-ghost" title="Choose different file"
-                style={{padding:'0.875rem 1.25rem'}}>
+              <button onClick={reset} disabled={processing} className="btn-ghost" title="Choose different file" style={{padding:'0.7rem 1rem',fontSize:'12px'}}>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
