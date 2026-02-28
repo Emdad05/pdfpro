@@ -81,12 +81,12 @@ export default function SplitPDF() {
     <ToolLayout title="Split PDF" icon="✂️" description="Extract pages or split your PDF into multiple documents.">
       {!file ? <FileUpload onFiles={handleFile} /> : (
         <div className="space-y-4">
-          <div className="glass-card p-4 flex items-center gap-4">
+          <div className="card p-4 flex items-center gap-4">
             <div className="text-2xl">📄</div>
             <div><p className="font-semibold text-white">{file.name}</p><p className="text-sm text-slate-400">{pageCount} pages · {(file.size/1024).toFixed(1)} KB</p></div>
           </div>
-          <div className="glass-card p-5">
-            <h3 className="font-heading font-semibold text-white mb-4">Split mode</h3>
+          <div className="card p-5">
+            <h3 className="font-display font-semibold text-white mb-4">Split mode</h3>
             <div className="grid grid-cols-3 gap-3 mb-5">
               {[{id:'range',label:'Extract Range',desc:'Specific pages → 1 PDF'},{id:'every',label:'Split Every N',desc:'Equal chunks → ZIP'},{id:'extract',label:'Every Page',desc:'One PDF per page'}].map(m=>(
                 <button key={m.id} onClick={()=>setMode(m.id)} className={`option-btn text-left ${mode===m.id?'active':''}`}>
@@ -98,25 +98,25 @@ export default function SplitPDF() {
             {mode==='range' && (
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Pages (e.g. 1-3, 5, 7-10)</label>
-                <input type="text" value={rangeInput} onChange={e=>setRangeInput(e.target.value)} className="glass-input" placeholder={`1-${pageCount}`} />
+                <input type="text" value={rangeInput} onChange={e=>setRangeInput(e.target.value)} className="input" placeholder={`1-${pageCount}`} />
                 <p className="text-xs text-slate-500 mt-1">Total: {pageCount} pages</p>
               </div>
             )}
             {mode==='every' && (
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Pages per part</label>
-                <input type="number" value={everyN} min={1} max={pageCount} onChange={e=>setEveryN(e.target.value)} className="glass-input w-32" />
+                <input type="number" value={everyN} min={1} max={pageCount} onChange={e=>setEveryN(e.target.value)} className="input w-32" />
                 <p className="text-xs text-slate-500 mt-1">Creates ~{Math.ceil(pageCount/everyN)} parts</p>
               </div>
             )}
             {mode==='extract' && <p className="text-sm text-slate-400 bg-white/5 rounded-xl p-4">Each of the {pageCount} pages will be extracted into its own PDF and bundled as a ZIP.</p>}
           </div>
           {done ? (
-            <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-heading font-semibold text-emerald-300 text-lg mb-3">Split successfully!</p><button onClick={()=>{setFile(null);setDone(false);}} className="btn-glass text-sm">Split another</button></div>
+            <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-display font-semibold text-gold text-lg mb-3">Split successfully!</p><button onClick={()=>{setFile(null);setDone(false);}} className="btn-ghost text-sm">Split another</button></div>
           ) : (
             <div className="flex gap-3">
               <button onClick={split} disabled={processing} className="btn-primary flex-1 justify-center">{processing?'Processing...':'Split PDF'}</button>
-              <button onClick={()=>setFile(null)} className="btn-glass">Reset</button>
+              <button onClick={()=>setFile(null)} className="btn-ghost">Reset</button>
             </div>
           )}
         </div>

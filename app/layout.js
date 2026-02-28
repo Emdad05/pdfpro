@@ -1,26 +1,27 @@
-import { Syne, Plus_Jakarta_Sans } from 'next/font/google';
+import { Cormorant_Garamond, DM_Mono } from 'next/font/google';
 import './globals.css';
 
-const syne = Syne({
+const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  variable: '--font-syne',
+  variable: '--font-display',
   display: 'swap',
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
 });
 
-const jakarta = Plus_Jakarta_Sans({
+const dmMono = DM_Mono({
   subsets: ['latin'],
-  variable: '--font-jakarta',
+  variable: '--font-mono',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500'],
 });
 
 export const metadata = {
-  title: 'PDFPro — Free Online PDF Tools',
+  title: 'PDFPro — Professional PDF Tools',
   description: 'Merge, split, compress, convert, and edit PDFs. Works in your browser. Files never leave your device.',
   keywords: 'PDF tools, merge PDF, split PDF, compress PDF, convert PDF, PDF to Word, Word to PDF',
   openGraph: {
-    title: 'PDFPro — Free Online PDF Tools',
+    title: 'PDFPro — Professional PDF Tools',
     description: 'Every PDF tool you need. Private, fast, and free.',
     type: 'website',
   },
@@ -28,7 +29,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${syne.variable} ${jakarta.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${dmMono.variable}`}>
       <body>{children}</body>
     </html>
   );

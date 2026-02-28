@@ -46,8 +46,8 @@ export default function JPGtoPDF() {
         <FileUpload onFiles={handleFiles} accept={{ 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] }} multiple label="Drop images here" sublabel="JPG, PNG, WebP supported" />
         {files.length > 0 && (
           <>
-            <div className="glass-card p-5">
-              <h3 className="font-heading font-semibold text-white mb-3">Images ({files.length})</h3>
+            <div className="card p-5">
+              <h3 className="font-display font-semibold text-white mb-3">Images ({files.length})</h3>
               <div className="space-y-2">
                 {files.map(({ file, id, preview }, i) => (
                   <div key={id} className="file-item justify-between">
@@ -64,14 +64,14 @@ export default function JPGtoPDF() {
                 ))}
               </div>
             </div>
-            <div className="glass-card p-5 grid grid-cols-2 gap-5">
+            <div className="card p-5 grid grid-cols-2 gap-5">
               <div><label className="block text-sm text-slate-400 mb-2">Page size</label><div className="flex gap-2">{['A4', 'Letter', 'A3'].map(s => <button key={s} onClick={() => setPageSize(s)} className={`option-btn flex-1 ${pageSize === s ? 'active' : ''}`}>{s}</button>)}</div></div>
               <div><label className="block text-sm text-slate-400 mb-2">Image fit</label><div className="flex gap-2">{[{ id: 'contain', label: 'Contain' }, { id: 'fill', label: 'Fill' }].map(f => <button key={f.id} onClick={() => setFit(f.id)} className={`option-btn flex-1 ${fit === f.id ? 'active' : ''}`}>{f.label}</button>)}</div></div>
             </div>
             {done ? (
-              <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-heading font-semibold text-emerald-300 text-lg mb-3">PDF created!</p><button onClick={() => { setFiles([]); setDone(false); }} className="btn-glass text-sm">Convert more</button></div>
+              <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-display font-semibold text-gold text-lg mb-3">PDF created!</p><button onClick={() => { setFiles([]); setDone(false); }} className="btn-ghost text-sm">Convert more</button></div>
             ) : (
-              <div className="flex gap-3"><button onClick={convert} disabled={processing} className="btn-primary flex-1 justify-center">{processing ? 'Creating PDF...' : 'Convert to PDF'}</button><button onClick={() => setFiles([])} className="btn-glass">Reset</button></div>
+              <div className="flex gap-3"><button onClick={convert} disabled={processing} className="btn-primary flex-1 justify-center">{processing ? 'Creating PDF...' : 'Convert to PDF'}</button><button onClick={() => setFiles([])} className="btn-ghost">Reset</button></div>
             )}
           </>
         )}

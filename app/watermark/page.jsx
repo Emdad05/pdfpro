@@ -8,7 +8,7 @@ export default function WatermarkPDF() {
   const [text, setText] = useState('CONFIDENTIAL');
   const [opacity, setOpacity] = useState(0.15);
   const [fontSize, setFontSize] = useState(48);
-  const [color, setColor] = useState('#00d8d6');
+  const [color, setColor] = useState('#C9A84C');
   const [position, setPosition] = useState('diagonal');
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
@@ -45,11 +45,11 @@ export default function WatermarkPDF() {
     <ToolLayout title="Watermark PDF" icon="💧" description="Add a custom text watermark to every page of your PDF.">
       {!file ? <FileUpload onFiles={a => setFile(a[0])} /> : (
         <div className="space-y-4">
-          <div className="glass-card p-4 flex items-center gap-4"><div className="text-2xl">📄</div><div><p className="font-semibold text-white">{file.name}</p></div></div>
-          <div className="glass-card p-5 space-y-4">
-            <div><label className="block text-sm text-slate-400 mb-1">Watermark text</label><input type="text" value={text} onChange={e => setText(e.target.value)} className="glass-input" placeholder="e.g. CONFIDENTIAL" /></div>
+          <div className="card p-4 flex items-center gap-4"><div className="text-2xl">📄</div><div><p className="font-semibold text-white">{file.name}</p></div></div>
+          <div className="card p-5 space-y-4">
+            <div><label className="block text-sm text-slate-400 mb-1">Watermark text</label><input type="text" value={text} onChange={e => setText(e.target.value)} className="input" placeholder="e.g. CONFIDENTIAL" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-sm text-slate-400 mb-1">Font size</label><input type="number" value={fontSize} min={12} max={120} onChange={e => setFontSize(Number(e.target.value))} className="glass-input" /></div>
+              <div><label className="block text-sm text-slate-400 mb-1">Font size</label><input type="number" value={fontSize} min={12} max={120} onChange={e => setFontSize(Number(e.target.value))} className="input" /></div>
               <div><label className="block text-sm text-slate-400 mb-1">Color</label><div className="flex items-center gap-3"><input type="color" value={color} onChange={e => setColor(e.target.value)} /><span className="text-sm text-slate-400 font-mono">{color}</span></div></div>
             </div>
             <div><label className="block text-sm text-slate-400 mb-1">Opacity: {Math.round(opacity * 100)}%</label><input type="range" min={0.05} max={0.8} step={0.05} value={opacity} onChange={e => setOpacity(Number(e.target.value))} /></div>
@@ -59,9 +59,9 @@ export default function WatermarkPDF() {
             </div>
           </div>
           {done ? (
-            <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-heading font-semibold text-emerald-300 text-lg mb-3">Watermark added!</p><button onClick={() => { setFile(null); setDone(false); }} className="btn-glass text-sm">Watermark another</button></div>
+            <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-display font-semibold text-gold text-lg mb-3">Watermark added!</p><button onClick={() => { setFile(null); setDone(false); }} className="btn-ghost text-sm">Watermark another</button></div>
           ) : (
-            <div className="flex gap-3"><button onClick={addWatermark} disabled={processing || !text} className="btn-primary flex-1 justify-center">{processing ? 'Adding...' : 'Add Watermark'}</button><button onClick={() => setFile(null)} className="btn-glass">Reset</button></div>
+            <div className="flex gap-3"><button onClick={addWatermark} disabled={processing || !text} className="btn-primary flex-1 justify-center">{processing ? 'Adding...' : 'Add Watermark'}</button><button onClick={() => setFile(null)} className="btn-ghost">Reset</button></div>
           )}
         </div>
       )}

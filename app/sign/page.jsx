@@ -24,7 +24,7 @@ export default function SignPDF() {
         canvas.width = canvas.offsetWidth * ratio;
         canvas.height = canvas.offsetHeight * ratio;
         canvas.getContext('2d').scale(ratio, ratio);
-        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(255,255,255,0)', penColor: '#00d8d6', minWidth: 1.5, maxWidth: 4 });
+        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(255,255,255,0)', penColor: '#C9A84C', minWidth: 1.5, maxWidth: 4 });
         padRef.current = pad;
       });
     }
@@ -76,43 +76,43 @@ export default function SignPDF() {
 
       {step === 2 && (
         <div className="space-y-4">
-          <div className="glass-card p-4 flex items-center gap-4"><div className="text-2xl">📄</div><div><p className="font-semibold text-white">{file.name}</p></div></div>
-          <div className="glass-card p-5">
+          <div className="card p-4 flex items-center gap-4"><div className="text-2xl">📄</div><div><p className="font-semibold text-white">{file.name}</p></div></div>
+          <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-heading font-semibold text-white">Draw your signature</h3>
-              <button onClick={clearSig} className="text-sm text-slate-400 hover:text-accent-400 transition-colors">Clear</button>
+              <h3 className="font-display font-semibold text-white">Draw your signature</h3>
+              <button onClick={clearSig} className="text-sm text-slate-400 hover:text-gold transition-colors">Clear</button>
             </div>
             <div className="sig-canvas-wrapper"><canvas ref={canvasRef} className="w-full h-full" style={{ touchAction: 'none', cursor: 'crosshair' }} /></div>
             <p className="text-xs text-slate-500 mt-2 text-center">Draw with mouse or finger</p>
           </div>
           <div className="flex gap-3">
             <button onClick={saveSig} className="btn-primary flex-1 justify-center">Continue →</button>
-            <button onClick={reset} className="btn-glass">Cancel</button>
+            <button onClick={reset} className="btn-ghost">Cancel</button>
           </div>
         </div>
       )}
 
       {step === 3 && !done && (
         <div className="space-y-4">
-          <div className="glass-card p-5">
-            <h3 className="font-heading font-semibold text-white mb-3">Your signature</h3>
+          <div className="card p-5">
+            <h3 className="font-display font-semibold text-white mb-3">Your signature</h3>
             <div className="rounded-xl p-4 inline-block border border-white/5" style={{ background: 'rgba(255,255,255,0.03)' }}>
               <img src={sigData} alt="Signature" className="max-h-16 max-w-xs" />
             </div>
-            <button onClick={() => setStep(2)} className="text-sm text-accent-400 hover:text-accent-300 ml-4 transition-colors">Redraw</button>
+            <button onClick={() => setStep(2)} className="text-sm text-gold hover:text-gold ml-4 transition-colors">Redraw</button>
           </div>
-          <div className="glass-card p-5 space-y-4">
+          <div className="card p-5 space-y-4">
             <div><label className="block text-sm text-slate-400 mb-2">Signature position</label><div className="grid grid-cols-3 sm:grid-cols-5 gap-2">{[{ id: 'bottom-left', l: '↙ BL' }, { id: 'bottom-center', l: '↓ BC' }, { id: 'bottom-right', l: '↘ BR' }, { id: 'top-left', l: '↖ TL' }, { id: 'top-right', l: '↗ TR' }].map(p => <button key={p.id} onClick={() => setPosition(p.id)} className={`option-btn text-xs ${position === p.id ? 'active' : ''}`}>{p.l}</button>)}</div></div>
             <div><label className="block text-sm text-slate-400 mb-2">Apply to</label><div className="flex gap-2">{[{ id: 'last', l: 'Last page' }, { id: 'first', l: 'First page' }, { id: 'all', l: 'All pages' }].map(p => <button key={p.id} onClick={() => setSigPage(p.id)} className={`option-btn flex-1 ${sigPage === p.id ? 'active' : ''}`}>{p.l}</button>)}</div></div>
           </div>
           <div className="flex gap-3">
             <button onClick={embed} disabled={processing} className="btn-primary flex-1 justify-center">{processing ? 'Signing...' : 'Sign & Download PDF'}</button>
-            <button onClick={reset} className="btn-glass">Reset</button>
+            <button onClick={reset} className="btn-ghost">Reset</button>
           </div>
         </div>
       )}
 
-      {done && <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-heading font-semibold text-emerald-300 text-lg mb-3">PDF signed!</p><button onClick={reset} className="btn-glass text-sm">Sign another</button></div>}
+      {done && <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-display font-semibold text-gold text-lg mb-3">PDF signed!</p><button onClick={reset} className="btn-ghost text-sm">Sign another</button></div>}
     </ToolLayout>
   );
 }

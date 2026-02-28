@@ -62,8 +62,8 @@ export default function HTMLtoPDF() {
     <ToolLayout title="HTML to PDF" icon="🌐" description="Convert HTML files or paste HTML code to get a perfectly rendered PDF." isServer>
       <div className="space-y-5">
         {/* Mode switcher */}
-        <div className="glass-card p-5">
-          <h3 className="font-heading font-semibold text-white mb-3">Input method</h3>
+        <div className="card p-5">
+          <h3 className="font-display font-semibold text-white mb-3">Input method</h3>
           <div className="flex gap-3">
             {[{id:'file',label:'Upload HTML file'},{id:'paste',label:'Paste HTML code'}].map(m => (
               <button key={m.id} onClick={() => setMode(m.id)} className={`option-btn flex-1 ${mode === m.id ? 'active' : ''}`}>
@@ -79,23 +79,23 @@ export default function HTMLtoPDF() {
             <div className="drop-zone" onClick={() => document.getElementById('html-file').click()}>
               <input id="html-file" type="file" accept=".html,.htm" className="hidden" onChange={e => setFile(e.target.files[0])} />
               <div className="text-4xl mb-3">🌐</div>
-              <p className="text-white font-semibold font-heading">Click to upload HTML file</p>
+              <p className="text-white font-semibold font-display">Click to upload HTML file</p>
               <p className="text-slate-500 text-sm mt-1">Accepts .html, .htm</p>
             </div>
           ) : (
-            <div className="glass-card p-4 flex items-center gap-4">
+            <div className="card p-4 flex items-center gap-4">
               <div className="text-2xl">🌐</div>
               <div><p className="font-semibold text-white">{file.name}</p><p className="text-sm text-slate-400">{(file.size/1024).toFixed(1)} KB</p></div>
               <button onClick={() => setFile(null)} className="ml-auto text-slate-500 hover:text-red-400 transition-colors">✕</button>
             </div>
           )
         ) : (
-          <div className="glass-card p-5">
+          <div className="card p-5">
             <label className="block text-sm font-medium text-slate-300 mb-2">Paste your HTML code</label>
             <textarea
               value={htmlContent}
               onChange={e => setHtmlContent(e.target.value)}
-              className="glass-input font-mono text-xs"
+              className="input font-mono text-xs"
               style={{minHeight:'200px'}}
               placeholder="<!DOCTYPE html><html><body><h1>Hello World</h1></body></html>"
             />
@@ -103,17 +103,17 @@ export default function HTMLtoPDF() {
         )}
 
         {serverWarning && (
-          <div className="glass-card p-4" style={{borderColor:'rgba(251,146,60,0.2)', background:'rgba(251,146,60,0.05)'}}>
+          <div className="card p-4" style={{borderColor:'rgba(251,146,60,0.2)', background:'rgba(251,146,60,0.05)'}}>
             <p className="text-amber-300 text-sm">⏳ Starting conversion server... (~30 seconds on first use)</p>
           </div>
         )}
-        {error && <div className="glass-card p-4" style={{borderColor:'rgba(239,68,68,0.2)'}}><p className="text-red-400 text-sm">❌ {error}</p></div>}
+        {error && <div className="card p-4" style={{borderColor:'rgba(239,68,68,0.2)'}}><p className="text-red-400 text-sm">❌ {error}</p></div>}
 
         {done ? (
           <div className="success-card">
             <div className="text-4xl mb-3">✅</div>
-            <p className="font-heading font-semibold text-emerald-300 text-lg mb-3">PDF downloaded!</p>
-            <button onClick={() => { setFile(null); setHtmlContent(''); setDone(false); }} className="btn-glass text-sm">Convert another</button>
+            <p className="font-display font-semibold text-gold text-lg mb-3">PDF downloaded!</p>
+            <button onClick={() => { setFile(null); setHtmlContent(''); setDone(false); }} className="btn-ghost text-sm">Convert another</button>
           </div>
         ) : (
           <button onClick={convert} disabled={processing || !canConvert} className="btn-primary w-full justify-center">

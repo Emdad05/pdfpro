@@ -12,47 +12,49 @@ const tools = [
   { label: 'PPT to PDF',   href: '/pptx-to-pdf' },
   { label: 'Excel to PDF', href: '/xlsx-to-pdf' },
   { label: 'HTML to PDF',  href: '/html-to-pdf' },
+  { label: 'PDF to PPT',   href: '/pdf-to-ppt' },
   { label: 'Watermark',    href: '/watermark' },
   { label: 'Page Numbers', href: '/page-numbers' },
   { label: 'Sign PDF',     href: '/sign' },
   { label: 'Protect PDF',  href: '/protect' },
   { label: 'Unlock PDF',   href: '/unlock' },
   { label: 'OCR PDF',      href: '/ocr' },
-  { label: 'PDF to PPT',  href: '/pdf-to-ppt' },
 ];
 
 export default function Footer() {
   return (
-    <footer className="relative border-t border-white/5 mt-24">
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+    <footer className="relative z-10 border-t border-white/5 mt-20">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent-400 to-accent-700 flex items-center justify-center">
-                <svg style={{width:'18px',height:'18px'}} className="text-slate-900" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-5 h-5 border border-gold-400/40 flex items-center justify-center">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 2h5l3 3v5H2V2z" stroke="#C9A84C" strokeWidth="0.8"/>
                 </svg>
               </div>
-              <span className="font-heading font-bold text-lg text-white">PDF<span className="accent-text">Pro</span></span>
+              <span className="font-display text-sm font-light tracking-widest text-white uppercase">
+                PDF<span className="text-gold">Pro</span>
+              </span>
             </div>
-            <p className="text-sm text-slate-400 leading-relaxed mb-5">
-              Free, fast, and private PDF tools. Most tools process files directly in your browser — your data stays yours.
+            <p className="font-mono text-xs text-white/30 leading-relaxed max-w-xs">
+              Professional PDF tools that run in your browser. No accounts, no uploads, no data collected.
             </p>
-            <div className="glass-card p-3 flex items-center gap-2.5 text-sm">
-              <span className="text-emerald-400">🔐</span>
-              <span className="text-slate-300">No accounts. No uploads. No tracking.</span>
+            <div className="mt-6 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-gold-400/60" />
+              <span className="font-mono text-xs text-gold-400/60">Zero files stored — ever</span>
             </div>
           </div>
 
-          {/* All Tools */}
+          {/* Tools */}
           <div className="md:col-span-2">
-            <p className="section-label mb-4">All Tools</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+            <p className="label-gold mb-4">All Tools</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
               {tools.map(t => (
                 <Link key={t.href} href={t.href}
-                  className="text-sm text-slate-400 hover:text-accent-400 transition-colors py-0.5">
+                  className="font-mono text-xs text-white/30 hover:text-white/70 transition-colors py-0.5">
                   {t.label}
                 </Link>
               ))}
@@ -60,9 +62,12 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/5 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-500">
-          <p>© {new Date().getFullYear()} PDFPro. All rights reserved.</p>
-          <p>Built with care — privacy first, always.</p>
+        {/* Bottom rule */}
+        <div className="h-px mb-6" style={{background:'linear-gradient(90deg, rgba(201,168,76,0.2), transparent)'}} />
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <p className="font-mono text-xs text-white/20">© {new Date().getFullYear()} PDFPro. All rights reserved.</p>
+          <p className="font-mono text-xs text-white/20">Built for privacy. Designed for professionals.</p>
         </div>
       </div>
     </footer>

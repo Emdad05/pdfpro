@@ -57,37 +57,37 @@ export default function OCRPage() {
     <ToolLayout title="OCR PDF" icon="🔍" description="Extract text from scanned or image-based PDF files using OCR.">
       {!file ? <FileUpload onFiles={a => setFile(a[0])} label="Upload a scanned PDF" sublabel="Best for image-based or scanned PDFs" /> : (
         <div className="space-y-4">
-          <div className="glass-card p-4 flex items-center gap-4"><div className="text-2xl">📄</div><div><p className="font-semibold text-white">{file.name}</p><p className="text-sm text-slate-400">{(file.size / 1024).toFixed(1)} KB</p></div></div>
-          <div className="glass-card p-5">
+          <div className="card p-4 flex items-center gap-4"><div className="text-2xl">📄</div><div><p className="font-semibold text-white">{file.name}</p><p className="text-sm text-slate-400">{(file.size / 1024).toFixed(1)} KB</p></div></div>
+          <div className="card p-5">
             <label className="block text-sm text-slate-400 mb-2">Language</label>
-            <select value={lang} onChange={e => setLang(e.target.value)} className="glass-input">
+            <select value={lang} onChange={e => setLang(e.target.value)} className="input">
               {languages.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
             </select>
             <p className="text-xs text-slate-500 mt-2">⚠️ OCR runs locally in your browser — may take 1–2 minutes for multi-page PDFs.</p>
           </div>
           {processing && (
-            <div className="glass-card p-4">
-              <div className="flex justify-between text-sm mb-2"><span className="text-slate-300">{statusText || 'Processing...'}</span><span className="text-accent-400">{progress}%</span></div>
+            <div className="card p-4">
+              <div className="flex justify-between text-sm mb-2"><span className="text-slate-300">{statusText || 'Processing...'}</span><span className="text-gold">{progress}%</span></div>
               <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.max(progress, 5)}%` }} /></div>
             </div>
           )}
           {result && (
-            <div className="glass-card p-5">
+            <div className="card p-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-heading font-semibold text-white">Extracted Text</h3>
+                <h3 className="font-display font-semibold text-white">Extracted Text</h3>
                 <div className="flex gap-2">
-                  <button onClick={() => navigator.clipboard.writeText(result)} className="btn-glass text-xs py-1.5 px-3">Copy</button>
+                  <button onClick={() => navigator.clipboard.writeText(result)} className="btn-ghost text-xs py-1.5 px-3">Copy</button>
                   <button onClick={downloadTxt} className="btn-primary text-xs py-1.5 px-3">Download .txt</button>
                 </div>
               </div>
-              <textarea value={result} readOnly className="glass-input font-mono text-xs resize-y" style={{ minHeight: '200px' }} />
+              <textarea value={result} readOnly className="input font-mono text-xs resize-y" style={{ minHeight: '200px' }} />
               <p className="text-xs text-slate-500 mt-2">{result.split(/\s+/).length} words extracted</p>
             </div>
           )}
           {!processing && (
             <div className="flex gap-3">
               <button onClick={runOCR} disabled={processing} className="btn-primary flex-1 justify-center">Run OCR</button>
-              <button onClick={() => { setFile(null); setResult(''); }} className="btn-glass">Reset</button>
+              <button onClick={() => { setFile(null); setResult(''); }} className="btn-ghost">Reset</button>
             </div>
           )}
         </div>

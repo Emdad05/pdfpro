@@ -52,13 +52,13 @@ export default function RotatePDF() {
     <ToolLayout title="Rotate PDF" icon="🔄" description="Rotate all or specific pages in your PDF document.">
       {!file ? <FileUpload onFiles={handleFile} /> : (
         <div className="space-y-4">
-          <div className="glass-card p-4 flex items-center gap-4">
+          <div className="card p-4 flex items-center gap-4">
             <div className="text-2xl">📄</div>
             <div><p className="font-semibold text-white">{file.name}</p><p className="text-sm text-slate-400">{pageCount} pages</p></div>
           </div>
-          <div className="glass-card p-5 space-y-5">
+          <div className="card p-5 space-y-5">
             <div>
-              <h3 className="font-heading font-semibold text-white mb-3">Rotation angle</h3>
+              <h3 className="font-display font-semibold text-white mb-3">Rotation angle</h3>
               <div className="grid grid-cols-4 gap-3">
                 {[{ deg: 90, label: '+90°', sub: 'Clockwise' }, { deg: 180, label: '180°', sub: 'Flip' }, { deg: 270, label: '270°', sub: '270° CW' }, { deg: -90, label: '-90°', sub: 'Counter-CW' }].map(r => (
                   <button key={r.deg} onClick={() => setRotation(r.deg)} className={`option-btn ${rotation === r.deg ? 'active' : ''}`}>
@@ -68,21 +68,21 @@ export default function RotatePDF() {
               </div>
             </div>
             <div>
-              <h3 className="font-heading font-semibold text-white mb-3">Which pages?</h3>
+              <h3 className="font-display font-semibold text-white mb-3">Which pages?</h3>
               <div className="flex gap-3 mb-3">
                 {[{ id: 'all', label: 'All pages' }, { id: 'range', label: 'Custom range' }].map(m => (
                   <button key={m.id} onClick={() => setPageMode(m.id)} className={`option-btn flex-1 ${pageMode === m.id ? 'active' : ''}`}>{m.label}</button>
                 ))}
               </div>
-              {pageMode === 'range' && <input type="text" value={rangeInput} onChange={e => setRangeInput(e.target.value)} className="glass-input" placeholder="e.g. 1-3, 5, 7-10" />}
+              {pageMode === 'range' && <input type="text" value={rangeInput} onChange={e => setRangeInput(e.target.value)} className="input" placeholder="e.g. 1-3, 5, 7-10" />}
             </div>
           </div>
           {done ? (
-            <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-heading font-semibold text-emerald-300 text-lg mb-3">PDF rotated!</p><button onClick={() => { setFile(null); setDone(false); }} className="btn-glass text-sm">Rotate another</button></div>
+            <div className="success-card"><div className="text-4xl mb-3">✅</div><p className="font-display font-semibold text-gold text-lg mb-3">PDF rotated!</p><button onClick={() => { setFile(null); setDone(false); }} className="btn-ghost text-sm">Rotate another</button></div>
           ) : (
             <div className="flex gap-3">
               <button onClick={rotate} disabled={processing} className="btn-primary flex-1 justify-center">{processing ? 'Rotating...' : 'Rotate PDF'}</button>
-              <button onClick={() => setFile(null)} className="btn-glass">Reset</button>
+              <button onClick={() => setFile(null)} className="btn-ghost">Reset</button>
             </div>
           )}
         </div>

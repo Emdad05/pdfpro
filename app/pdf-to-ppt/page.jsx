@@ -185,7 +185,7 @@ export default function PDFtoPPT() {
         <div className="space-y-4">
 
           {/* File card */}
-          <div className="glass-card p-4 flex items-center gap-4">
+          <div className="card p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
               style={{ background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.2)' }}>
               📄
@@ -205,8 +205,8 @@ export default function PDFtoPPT() {
 
           {/* Mode selector */}
           {!processing && !result && (
-            <div className="glass-card p-5">
-              <h3 className="font-heading font-semibold text-white mb-4">Conversion Mode</h3>
+            <div className="card p-5">
+              <h3 className="font-display font-semibold text-white mb-4">Conversion Mode</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {MODE_OPTIONS.map(m => (
                   <button
@@ -221,7 +221,7 @@ export default function PDFtoPPT() {
                     <p className="text-xs opacity-60 leading-relaxed">{m.desc}</p>
                     {m.badge && (
                       <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                        style={{ background: 'rgba(0,216,214,0.15)', color: '#00d8d6', border: '1px solid rgba(0,216,214,0.25)' }}>
+                        style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.25)' }}>
                         {m.badge}
                       </span>
                     )}
@@ -234,7 +234,7 @@ export default function PDFtoPPT() {
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 {mode === 'auto' && (
                   <p className="text-slate-400">
-                    <span className="text-accent-400 font-semibold">Auto mode:</span> Landscape pages (typical
+                    <span className="text-gold font-semibold">Auto mode:</span> Landscape pages (typical
                     PowerPoint exports) use <strong className="text-white">text extraction</strong> — fonts,
                     bold, italic, and positions are preserved and editable in PowerPoint.
                     Portrait pages fall back to image slides automatically.
@@ -260,8 +260,8 @@ export default function PDFtoPPT() {
 
               {/* Font info panel */}
               <div className="mt-3 rounded-xl p-4"
-                style={{ background: 'rgba(0,216,214,0.04)', border: '1px solid rgba(0,216,214,0.1)' }}>
-                <p className="text-xs text-accent-400 font-semibold uppercase tracking-wider mb-2">
+                style={{ background: 'rgba(201,168,76,0.04)', border: '1px solid rgba(201,168,76,0.1)' }}>
+                <p className="text-xs text-gold font-semibold uppercase tracking-wider mb-2">
                   What gets preserved in Text Mode
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -287,10 +287,10 @@ export default function PDFtoPPT() {
 
           {/* Progress */}
           {processing && (
-            <div className="glass-card p-5">
+            <div className="card p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-slate-300 font-medium">{status}</span>
-                <span className="text-accent-400 font-bold font-heading">{progress}%</span>
+                <span className="text-gold font-bold font-display">{progress}%</span>
               </div>
               <div className="progress-track mb-3">
                 <div className="progress-fill transition-all duration-500" style={{ width: `${Math.max(progress, 3)}%` }} />
@@ -303,9 +303,9 @@ export default function PDFtoPPT() {
                 ].map((step, i) => {
                   const active = i === 0 ? progress < 33 : i === 1 ? progress < 85 : progress >= 85;
                   return (
-                    <div key={step.label} className={`rounded-xl p-3 transition-all ${active ? 'bg-accent-500/10 border border-accent-500/20' : 'bg-white/3 border border-white/5'}`}>
+                    <div key={step.label} className={`rounded-xl p-3 transition-all ${active ? 'bg-gold-400/10 border border-gold-400/20' : 'bg-white/3 border border-white/5'}`}>
                       <p className="text-lg mb-0.5">{step.icon}</p>
-                      <p className={`text-xs ${active ? 'text-accent-400' : 'text-slate-500'}`}>{step.label}</p>
+                      <p className={`text-xs ${active ? 'text-gold' : 'text-slate-500'}`}>{step.label}</p>
                     </div>
                   );
                 })}
@@ -315,7 +315,7 @@ export default function PDFtoPPT() {
 
           {/* Error */}
           {error && !processing && (
-            <div className="glass-card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)' }}>
+            <div className="card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)' }}>
               <p className="text-red-400 text-sm">❌ {error}</p>
             </div>
           )}
@@ -327,7 +327,7 @@ export default function PDFtoPPT() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="text-4xl">✅</div>
                   <div>
-                    <p className="font-heading font-bold text-emerald-300 text-xl">Conversion complete!</p>
+                    <p className="font-display font-bold text-gold text-xl">Conversion complete!</p>
                     <p className="text-slate-400 text-sm">Your PPTX has been downloaded.</p>
                   </div>
                 </div>
@@ -341,9 +341,9 @@ export default function PDFtoPPT() {
                     { label: 'Text runs',     value: result.totalRuns.toLocaleString(), icon: '🔤' },
                   ].map(s => (
                     <div key={s.label} className="rounded-xl p-3 text-center"
-                      style={{ background: 'rgba(0,216,214,0.07)', border: '1px solid rgba(0,216,214,0.15)' }}>
+                      style={{ background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.15)' }}>
                       <p className="text-lg mb-0.5">{s.icon}</p>
-                      <p className="font-heading font-bold text-accent-300 text-xl">{s.value}</p>
+                      <p className="font-display font-bold text-gold text-xl">{s.value}</p>
                       <p className="text-xs text-slate-500">{s.label}</p>
                     </div>
                   ))}
@@ -375,7 +375,7 @@ export default function PDFtoPPT() {
                 </div>
 
                 <div className="flex gap-3 mt-4">
-                  <button onClick={reset} className="btn-glass flex-1 justify-center">
+                  <button onClick={reset} className="btn-ghost flex-1 justify-center">
                     Convert another PDF
                   </button>
                 </div>
@@ -388,7 +388,7 @@ export default function PDFtoPPT() {
             <div className="flex justify-center mt-2">
               <button
                 onClick={() => abortRef.current?.abort?.()}
-                className="btn-glass text-sm px-6"
+                className="btn-ghost text-sm px-6"
               >
                 ✕ Cancel
               </button>
@@ -409,7 +409,7 @@ export default function PDFtoPPT() {
                 </svg>
                 Convert to PowerPoint
               </button>
-              <button onClick={reset} className="btn-glass">Reset</button>
+              <button onClick={reset} className="btn-ghost">Reset</button>
             </div>
           )}
 
