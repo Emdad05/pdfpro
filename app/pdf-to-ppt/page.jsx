@@ -4,21 +4,29 @@ import ToolLayout from '../../components/ToolLayout';
 import FileUpload from '../../components/FileUpload';
 
 /**
- * Clean conversion — white slide + text boxes + image boxes.
- * No page-render background. No double layer. Fully editable in PowerPoint.
+ * iLovePDF-style conversion:
+ *
+ * Editable mode:
+ *   - Full page rendered as background PNG at 3× resolution (captures EVERYTHING:
+ *     background images, gradient fills, decorative text, photos, diagrams)
+ *   - Text content extracted with exact positions, fonts, sizes, colours
+ *   - Transparent text boxes placed precisely on top
+ *   - Result: looks pixel-perfect AND every text run is editable in PowerPoint
+ *
+ * Image-only mode:
+ *   - Page rendered as single image — nothing editable, but 100% fidelity
  */
 async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
   const pdfjsLib = await import('pdfjs-dist');
   const { setupPdfWorker } = await import('../../lib/pdfWorker');
   setupPdfWorker(pdfjsLib);
 
-  const { extractPageText, extractPageImages, renderPageToImage } =
-    await import('../../lib/pdfExtract');
-  const { createPresentation, addCleanSlide, addImageSlide, savePresentation } =
+  const { extractPageText, renderPageToImage } = await import('../../lib/pdfExtract');
+  const { createPresentation, addHybridSlide, addImageSlide, savePresentation } =
     await import('../../lib/pptxBuilder');
 
   onStatus('Loading PDF…');
-  const pdf      = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
   const numPages = pdf.numPages;
 
   const firstPage = await pdf.getPage(1);
@@ -28,34 +36,33 @@ async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     if (abortSignal?.aborted) throw new Error('Cancelled');
 
-    onProgress(Math.round((pageNum - 1) / numPages * 90));
+    const pct = Math.round((pageNum - 1) / numPages * 90);
+    onProgress(pct);
     const page = await pdf.getPage(pageNum);
     const vp   = page.getViewport({ scale: 1 });
 
     if (mode === 'image') {
-      // ── Image only: render full page as single image ──────────────
       onStatus(`Rendering page ${pageNum} of ${numPages}…`);
-      const img = await renderPageToImage(page, 2.5, 0.95);
+      const img = await renderPageToImage(page, 3.0, 0.97);
       addImageSlide(prs, img, vp.width, vp.height);
 
     } else {
-      // ── Clean mode: white slide + text + image boxes ──────────────
+      // Step 1: render full page — this is the visual background
+      // High resolution (3×) for sharp text in the background image
+      onStatus(`Rendering background — page ${pageNum} of ${numPages}…`);
+      const bgImg = await renderPageToImage(page, 3.0, 0.97);
 
-      // Extract text (positions, fonts, colours)
+      // Step 2: extract text — positions, fonts, colours for editable boxes
       onStatus(`Extracting text — page ${pageNum} of ${numPages}…`);
       const { lines } = await extractPageText(page, pdfjsLib);
 
-      // Extract embedded images (crops from page render)
-      onStatus(`Extracting images — page ${pageNum} of ${numPages}…`);
-      const images = await extractPageImages(page, pdfjsLib, 2.5);
-
-      // Build clean white slide
-      addCleanSlide(prs, lines, images, vp.width, vp.height);
+      // Step 3: hybrid slide = background image + transparent text boxes
+      addHybridSlide(prs, bgImg, lines, vp.width, vp.height);
     }
   }
 
   onProgress(95);
-  onStatus('Building PPTX file…');
+  onStatus('Building PPTX…');
   await savePresentation(prs, file.name.replace(/\.pdf$/i, '.pptx'));
   onProgress(100);
   onStatus('Done');
@@ -66,22 +73,22 @@ async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
 
 const MODES = [
   {
-    id:    'clean',
+    id:   'editable',
     title: 'Editable',
-    tag:   'Recommended',
-    desc:  'White slide. Text boxes at exact positions. Embedded images extracted as image boxes. Everything editable.',
+    tag:   'iLovePDF style',
+    desc:  'Background preserved as image. Transparent text boxes on top — click any text in PowerPoint to edit it.',
   },
   {
-    id:    'image',
+    id:   'image',
     title: 'Image only',
     tag:   'Pixel perfect',
-    desc:  'Each PDF page becomes a single image slide. Looks identical but nothing is editable.',
+    desc:  'Each page as a single full-quality image. Nothing editable. Perfect visual match.',
   },
 ];
 
 export default function PDFtoPPT() {
   const [file,       setFile]       = useState(null);
-  const [mode,       setMode]       = useState('clean');
+  const [mode,       setMode]       = useState('editable');
   const [processing, setProcessing] = useState(false);
   const [progress,   setProgress]   = useState(0);
   const [status,     setStatus]     = useState('');
@@ -97,15 +104,14 @@ export default function PDFtoPPT() {
   const convert = async () => {
     if (!file) return;
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setProcessing(true); setError(''); setResult(null); setProgress(0);
     try {
-      const stats = await runConversion(
-        file, mode,
-        pct => setProgress(pct),
-        msg => setStatus(msg),
-        controller.signal,
+      const stats = await runConversion(file, mode,
+        p => setProgress(p),
+        s => setStatus(s),
+        ctrl.signal,
       );
       setResult(stats);
     } catch (e) {
@@ -117,13 +123,13 @@ export default function PDFtoPPT() {
   const cancel = () => { abortRef.current?.abort(); setProcessing(false); setStatus(''); };
   const reset  = () => { setFile(null); setResult(null); setError(''); setProgress(0); };
 
-  const stages        = ['Loading', 'Text', 'Images', 'Building'];
-  const stageAt       = [0, 10, 50, 90];
+  const stages  = ['Loading', 'Rendering', 'Text', 'Building'];
+  const stageAt = [0, 10, 55, 90];
 
   return (
     <ToolLayout
       title="PDF to PPT"
-      description="White slide + extracted text boxes + image boxes. Fully editable in PowerPoint.">
+      description="Full background preserved. Transparent editable text on top. Open in PowerPoint and click any text to edit.">
       <div ref={topRef} />
 
       {!file ? (
@@ -131,7 +137,7 @@ export default function PDFtoPPT() {
       ) : (
         <div className="space-y-3">
 
-          {/* File row */}
+          {/* File card */}
           <div className="card p-3 flex items-center gap-3">
             <div className="w-8 h-8 border border-white/10 flex items-center justify-center flex-shrink-0"
               style={{background:'rgba(201,168,76,0.05)'}}>
@@ -142,8 +148,7 @@ export default function PDFtoPPT() {
               <p className="font-mono text-xs text-white/30">{(file.size/1024).toFixed(1)} KB</p>
             </div>
             {!processing && !result && (
-              <button onClick={reset}
-                className="p-1 text-white/20 hover:text-white/60 transition-colors">
+              <button onClick={reset} className="p-1 text-white/20 hover:text-white/60 transition-colors">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -169,9 +174,7 @@ export default function PDFtoPPT() {
                         fontFamily:'var(--font-mono)', fontSize:'9px', letterSpacing:'0.05em',
                         padding:'2px 6px', background:'rgba(201,168,76,0.08)',
                         color:'rgba(201,168,76,0.65)', border:'1px solid rgba(201,168,76,0.18)',
-                      }}>
-                        {m.tag}
-                      </span>
+                      }}>{m.tag}</span>
                     </div>
                     <p className="font-mono leading-relaxed"
                       style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>
@@ -181,21 +184,20 @@ export default function PDFtoPPT() {
                 ))}
               </div>
 
-              {mode === 'clean' && (
+              {mode === 'editable' && (
                 <div className="mt-3 p-3 anim-fade-down"
                   style={{background:'rgba(201,168,76,0.04)', border:'1px solid rgba(201,168,76,0.12)'}}>
-                  <p className="label-gold mb-2">What you get</p>
+                  <p className="label-gold mb-2">How it works</p>
                   {[
-                    'White background — clean slate',
-                    'Text extracted with exact position, font, size, bold/italic, colour',
-                    'Images & diagrams cropped from PDF, placed as image boxes',
-                    'Every element is independently selectable and editable',
+                    'Entire page rendered at 3× quality as background — background images, colours, graphics all preserved',
+                    'Text content extracted with exact position, font, size, bold/italic, colour',
+                    'Transparent text boxes overlaid precisely — invisible visually, but editable in PowerPoint',
                   ].map((t, idx) => (
                     <div key={idx} className="flex items-start gap-2 mt-1.5">
-                      <span style={{color:'var(--gold)', fontSize:'10px', marginTop:'1px', flexShrink:0}}>
-                        0{idx+1}
+                      <span style={{color:'var(--gold)', fontSize:'10px', marginTop:'2px', flexShrink:0}}>
+                        {idx+1}.
                       </span>
-                      <p className="font-mono" style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', lineHeight:'1.5'}}>
+                      <p className="font-mono" style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',lineHeight:'1.5'}}>
                         {t}
                       </p>
                     </div>
@@ -213,10 +215,8 @@ export default function PDFtoPPT() {
                   style={{background:'rgba(201,168,76,0.04)'}}>
                   <svg className="w-4 h-4 animate-spin" style={{color:'var(--gold)'}}
                     fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-15" cx="12" cy="12" r="10"
-                      stroke="currentColor" strokeWidth="2"/>
-                    <path className="opacity-80" fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    <circle className="opacity-15" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                    <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -250,9 +250,7 @@ export default function PDFtoPPT() {
                           ? 'rgba(201,168,76,0.9)'
                           : active ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.15)',
                         transition:'color 0.4s',
-                      }}>
-                        {stage}
-                      </p>
+                      }}>{stage}</p>
                     </div>
                   );
                 })}
@@ -271,8 +269,7 @@ export default function PDFtoPPT() {
           {error && (
             <div className="card p-4 flex gap-3 anim-slide-down"
               style={{borderColor:'rgba(239,68,68,0.2)'}}>
-              <div className="w-0.5 self-stretch flex-shrink-0"
-                style={{background:'rgba(239,68,68,0.5)'}}/>
+              <div className="w-0.5 self-stretch flex-shrink-0" style={{background:'rgba(239,68,68,0.5)'}}/>
               <div>
                 <p className="font-mono text-xs text-red-400 mb-0.5">Conversion failed</p>
                 <p className="font-mono text-xs text-white/30">{error}</p>
@@ -286,15 +283,14 @@ export default function PDFtoPPT() {
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-9 h-9 border border-gold-400/40 flex items-center justify-center">
                   <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M5 13l4 4L19 7"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
                 <div>
                   <p className="font-display text-xl font-light text-white">PPTX downloaded</p>
                   <p className="font-mono text-xs text-white/30 mt-0.5">
                     {result.numPages} slide{result.numPages !== 1 ? 's' : ''} ·{' '}
-                    {mode === 'clean' ? 'White + text & image boxes' : 'Image only'}
+                    {mode === 'editable' ? 'Background + editable text' : 'Image only'}
                   </p>
                 </div>
               </div>
@@ -311,7 +307,7 @@ export default function PDFtoPPT() {
             </div>
           )}
 
-          {/* Action buttons */}
+          {/* Action row */}
           {!processing && !result && (
             <div className="flex gap-2 pt-1">
               <button onClick={convert} className="btn-primary flex-1 justify-center"
