@@ -2,11 +2,11 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-export default function FileUpload({ onFiles, multiple = false, accept, label, sublabel }) {
+export default function FileUpload({ onFiles, multiple = false, accept, label, sublabel, children }) {
   const onDrop = useCallback(accepted => { if (accepted.length) onFiles(accepted); }, [onFiles]);
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop, multiple,
-    accept: accept ? { 'application/pdf': ['.pdf'], ...accept } : { 'application/pdf': ['.pdf'] },
+    accept: accept || { 'application/pdf': ['.pdf'] },
   });
 
   return (
@@ -31,6 +31,8 @@ export default function FileUpload({ onFiles, multiple = false, accept, label, s
       <button type="button" className="btn-ghost text-xs">
         Browse files
       </button>
+
+      {children}
     </div>
   );
 }

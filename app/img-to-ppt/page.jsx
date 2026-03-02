@@ -448,7 +448,7 @@ export default function ImgToPPT() {
       {!file ? (
         <FileUpload
           onFiles={handleFile}
-          accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+          accept={{ 'image/jpeg':['.jpg','.jpeg'], 'image/png':['.png'], 'image/webp':['.webp'], 'image/gif':['.gif'] }}
           label="Drop your slide image here"
           sublabel="JPG · PNG · WebP — screenshot or photo">
           <div className="flex flex-wrap gap-1.5 mt-5 justify-center">
