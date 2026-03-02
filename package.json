@@ -18,12 +18,13 @@
     "jszip": "^3.10.1",
     "file-saver": "^2.0.5",
     "signature_pad": "^4.1.7",
-    "tesseract.js": "^5.1.0",
+    "tesseract.js": "^5.1.1",
     "react-dropzone": "^14.2.3",
     "pptxgenjs": "^3.12.0",
     "mammoth": "^1.8.0",
     "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1"
+    "jspdf": "^2.5.1",
+    "docx": "^8.5.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.0.1",

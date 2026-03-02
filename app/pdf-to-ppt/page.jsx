@@ -3,30 +3,42 @@ import { useState, useRef } from 'react';
 import ToolLayout from '../../components/ToolLayout';
 import FileUpload from '../../components/FileUpload';
 
-/**
- * iLovePDF-style conversion:
- *
- * Editable mode:
- *   - Full page rendered as background PNG at 3× resolution (captures EVERYTHING:
- *     background images, gradient fills, decorative text, photos, diagrams)
- *   - Text content extracted with exact positions, fonts, sizes, colours
- *   - Transparent text boxes placed precisely on top
- *   - Result: looks pixel-perfect AND every text run is editable in PowerPoint
- *
- * Image-only mode:
- *   - Page rendered as single image — nothing editable, but 100% fidelity
- */
+// Detect if page has non-white graphic content
+async function pageHasGraphics(page, pdfjsLib) {
+  const OPS    = pdfjsLib.OPS ?? pdfjsLib.default?.OPS ?? {};
+  const opList = await page.getOperatorList();
+  const IMG_OPS = new Set([
+    OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject,
+    85, 84, 83,
+  ]);
+  for (let i = 0; i < opList.fnArray.length; i++) {
+    if (IMG_OPS.has(opList.fnArray[i])) return true;
+    if (opList.fnArray[i] === OPS.setFillRGBColor) {
+      const [r,g,b] = opList.argsArray[i];
+      if (!(r > 0.95 && g > 0.95 && b > 0.95)) {
+        for (let j = i+1; j < Math.min(i+8, opList.fnArray.length); j++) {
+          const fn = opList.fnArray[j];
+          if (fn === OPS.fill || fn === OPS.eoFill || fn === OPS.fillStroke) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
   const pdfjsLib = await import('pdfjs-dist');
   const { setupPdfWorker } = await import('../../lib/pdfWorker');
   setupPdfWorker(pdfjsLib);
 
   const { extractPageText, renderPageToImage } = await import('../../lib/pdfExtract');
-  const { createPresentation, addHybridSlide, addImageSlide, savePresentation } =
-    await import('../../lib/pptxBuilder');
+  const { inpaintPageRender }                  = await import('../../lib/inpaint');
+  const {
+    createPresentation, addCleanSlide, addHybridSlide, addImageSlide, savePresentation,
+  } = await import('../../lib/pptxBuilder');
 
   onStatus('Loading PDF…');
-  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pdf      = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
   const numPages = pdf.numPages;
 
   const firstPage = await pdf.getPage(1);
@@ -36,8 +48,7 @@ async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     if (abortSignal?.aborted) throw new Error('Cancelled');
 
-    const pct = Math.round((pageNum - 1) / numPages * 90);
-    onProgress(pct);
+    onProgress(Math.round((pageNum - 1) / numPages * 90));
     const page = await pdf.getPage(pageNum);
     const vp   = page.getViewport({ scale: 1 });
 
@@ -46,18 +57,39 @@ async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
       const img = await renderPageToImage(page, 3.0, 0.97);
       addImageSlide(prs, img, vp.width, vp.height);
 
-    } else {
-      // Step 1: render full page — this is the visual background
-      // High resolution (3×) for sharp text in the background image
-      onStatus(`Rendering background — page ${pageNum} of ${numPages}…`);
-      const bgImg = await renderPageToImage(page, 3.0, 0.97);
+    } else if (mode === 'auto') {
+      onStatus(`Analysing page ${pageNum}…`);
+      const hasGraphics = await pageHasGraphics(page, pdfjsLib);
 
-      // Step 2: extract text — positions, fonts, colours for editable boxes
       onStatus(`Extracting text — page ${pageNum} of ${numPages}…`);
       const { lines } = await extractPageText(page, pdfjsLib);
 
-      // Step 3: hybrid slide = background image + transparent text boxes
-      addHybridSlide(prs, bgImg, lines, vp.width, vp.height);
+      if (hasGraphics) {
+        // Render full background, inpaint text regions, then add text boxes
+        onStatus(`Rendering background — page ${pageNum}…`);
+        const rawBg = await renderPageToImage(page, 2.5, 0.95);
+
+        onStatus(`Inpainting text regions — page ${pageNum}…`);
+        const cleanBg = await inpaintPageRender(rawBg, lines, vp.width, vp.height);
+
+        addHybridSlide(prs, cleanBg, lines, vp.width, vp.height);
+      } else {
+        // Plain page — white slide + text boxes
+        addCleanSlide(prs, lines, [], vp.width, vp.height);
+      }
+
+    } else {
+      // Editable mode — always inpaint
+      onStatus(`Rendering background — page ${pageNum}…`);
+      const rawBg = await renderPageToImage(page, 2.5, 0.95);
+
+      onStatus(`Extracting text — page ${pageNum}…`);
+      const { lines } = await extractPageText(page, pdfjsLib);
+
+      onStatus(`Inpainting text regions — page ${pageNum}…`);
+      const cleanBg = await inpaintPageRender(rawBg, lines, vp.width, vp.height);
+
+      addHybridSlide(prs, cleanBg, lines, vp.width, vp.height);
     }
   }
 
@@ -69,26 +101,30 @@ async function runConversion(file, mode, onProgress, onStatus, abortSignal) {
   return { numPages };
 }
 
-// ── UI ─────────────────────────────────────────────────────────────────────
-
 const MODES = [
   {
-    id:   'editable',
-    title: 'Editable',
-    tag:   'iLovePDF style',
-    desc:  'Background preserved as image. Transparent text boxes on top — click any text in PowerPoint to edit it.',
+    id:    'auto',
+    title: 'Smart',
+    tag:   'Recommended',
+    desc:  'Auto-detects each page. Plain text → white slide. Pages with graphics → background preserved + text inpainted.',
   },
   {
-    id:   'image',
+    id:    'editable',
+    title: 'Background + Text',
+    tag:   'Always hybrid',
+    desc:  'Every page: background render with text erased + clean editable text boxes placed on top.',
+  },
+  {
+    id:    'image',
     title: 'Image only',
     tag:   'Pixel perfect',
-    desc:  'Each page as a single full-quality image. Nothing editable. Perfect visual match.',
+    desc:  'Each page as one image. Perfect fidelity, nothing editable.',
   },
 ];
 
 export default function PDFtoPPT() {
   const [file,       setFile]       = useState(null);
-  const [mode,       setMode]       = useState('editable');
+  const [mode,       setMode]       = useState('auto');
   const [processing, setProcessing] = useState(false);
   const [progress,   setProgress]   = useState(0);
   const [status,     setStatus]     = useState('');
@@ -123,21 +159,21 @@ export default function PDFtoPPT() {
   const cancel = () => { abortRef.current?.abort(); setProcessing(false); setStatus(''); };
   const reset  = () => { setFile(null); setResult(null); setError(''); setProgress(0); };
 
-  const stages  = ['Loading', 'Rendering', 'Text', 'Building'];
-  const stageAt = [0, 10, 55, 90];
+  const stages  = ['Loading','Processing','Inpainting','Building'];
+  const stageAt = [0, 10, 60, 90];
 
   return (
     <ToolLayout
       title="PDF to PPT"
-      description="Full background preserved. Transparent editable text on top. Open in PowerPoint and click any text to edit.">
-      <div ref={topRef} />
+      description="Smart mode: plain text pages → clean white slides. Graphic pages → background inpainted, clean editable text on top.">
+      <div ref={topRef}/>
 
       {!file ? (
-        <FileUpload onFiles={handleFile} label="Drop your PDF here" sublabel="Click to browse" />
+        <FileUpload onFiles={handleFile} label="Drop your PDF here" sublabel="Click to browse"/>
       ) : (
         <div className="space-y-3">
 
-          {/* File card */}
+          {/* File */}
           <div className="card p-3 flex items-center gap-3">
             <div className="w-8 h-8 border border-white/10 flex items-center justify-center flex-shrink-0"
               style={{background:'rgba(201,168,76,0.05)'}}>
@@ -159,51 +195,30 @@ export default function PDFtoPPT() {
           {/* Mode selector */}
           {!processing && !result && (
             <div className="card p-4">
-              <p className="label-gold mb-3">Output Mode</p>
-              <div className="grid grid-cols-2 gap-2">
+              <p className="label-gold mb-3">Conversion Mode</p>
+              <div className="grid grid-cols-3 gap-2">
                 {MODES.map(m => (
                   <button key={m.id} onClick={() => setMode(m.id)}
                     className={`option-btn text-left ${mode === m.id ? 'active' : ''}`}
-                    style={{padding:'0.75rem'}}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono text-xs font-medium"
-                        style={{color: mode===m.id ? 'var(--gold)':'rgba(255,255,255,0.55)'}}>
+                    style={{padding:'0.65rem 0.6rem'}}>
+                    <div className="mb-1.5">
+                      <span className="font-mono text-xs font-medium block mb-0.5"
+                        style={{color:mode===m.id?'var(--gold)':'rgba(255,255,255,0.55)'}}>
                         {m.title}
                       </span>
                       <span style={{
-                        fontFamily:'var(--font-mono)', fontSize:'9px', letterSpacing:'0.05em',
-                        padding:'2px 6px', background:'rgba(201,168,76,0.08)',
-                        color:'rgba(201,168,76,0.65)', border:'1px solid rgba(201,168,76,0.18)',
+                        fontFamily:'var(--font-mono)',fontSize:'8px',letterSpacing:'0.05em',
+                        padding:'1px 5px',background:'rgba(201,168,76,0.08)',
+                        color:'rgba(201,168,76,0.65)',border:'1px solid rgba(201,168,76,0.18)',
                       }}>{m.tag}</span>
                     </div>
                     <p className="font-mono leading-relaxed"
-                      style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>
+                      style={{fontSize:'9px',color:'rgba(255,255,255,0.28)'}}>
                       {m.desc}
                     </p>
                   </button>
                 ))}
               </div>
-
-              {mode === 'editable' && (
-                <div className="mt-3 p-3 anim-fade-down"
-                  style={{background:'rgba(201,168,76,0.04)', border:'1px solid rgba(201,168,76,0.12)'}}>
-                  <p className="label-gold mb-2">How it works</p>
-                  {[
-                    'Entire page rendered at 3× quality as background — background images, colours, graphics all preserved',
-                    'Text content extracted with exact position, font, size, bold/italic, colour',
-                    'Transparent text boxes overlaid precisely — invisible visually, but editable in PowerPoint',
-                  ].map((t, idx) => (
-                    <div key={idx} className="flex items-start gap-2 mt-1.5">
-                      <span style={{color:'var(--gold)', fontSize:'10px', marginTop:'2px', flexShrink:0}}>
-                        {idx+1}.
-                      </span>
-                      <p className="font-mono" style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',lineHeight:'1.5'}}>
-                        {t}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
@@ -230,25 +245,23 @@ export default function PDFtoPPT() {
 
               <div className="progress-track mb-4">
                 <div className="progress-fill"
-                  style={{width:`${Math.max(progress,2)}%`, transition:'width 0.5s ease'}}/>
+                  style={{width:`${Math.max(progress,2)}%`,transition:'width 0.5s ease'}}/>
               </div>
 
               <div className="flex">
-                {stages.map((stage, idx) => {
+                {stages.map((stage,idx) => {
                   const active  = progress >= stageAt[idx];
-                  const current = active && (idx === stages.length-1 || progress < stageAt[idx+1]);
+                  const current = active && (idx===stages.length-1 || progress < stageAt[idx+1]);
                   return (
                     <div key={stage} className="flex-1 text-center">
                       <div className="h-px mb-1.5" style={{
-                        background: active ? 'var(--gold)' : 'rgba(255,255,255,0.07)',
-                        transition: 'background 0.4s',
+                        background:active?'var(--gold)':'rgba(255,255,255,0.07)',
+                        transition:'background 0.4s',
                       }}/>
                       <p style={{
-                        fontFamily:'var(--font-mono)', fontSize:'9px',
-                        letterSpacing:'0.08em', textTransform:'uppercase',
-                        color: current
-                          ? 'rgba(201,168,76,0.9)'
-                          : active ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.15)',
+                        fontFamily:'var(--font-mono)',fontSize:'8px',
+                        letterSpacing:'0.08em',textTransform:'uppercase',
+                        color:current?'rgba(201,168,76,0.9)':active?'rgba(201,168,76,0.4)':'rgba(255,255,255,0.15)',
                         transition:'color 0.4s',
                       }}>{stage}</p>
                     </div>
@@ -256,7 +269,7 @@ export default function PDFtoPPT() {
                 })}
               </div>
 
-              <div className="flex justify-center mt-5">
+              <div className="flex justify-center mt-4">
                 <button onClick={cancel}
                   className="font-mono text-xs text-white/20 hover:text-white/50 transition-colors px-4 py-1.5 border border-white/5 hover:border-white/15">
                   Cancel
@@ -267,8 +280,7 @@ export default function PDFtoPPT() {
 
           {/* Error */}
           {error && (
-            <div className="card p-4 flex gap-3 anim-slide-down"
-              style={{borderColor:'rgba(239,68,68,0.2)'}}>
+            <div className="card p-4 flex gap-3" style={{borderColor:'rgba(239,68,68,0.2)'}}>
               <div className="w-0.5 self-stretch flex-shrink-0" style={{background:'rgba(239,68,68,0.5)'}}/>
               <div>
                 <p className="font-mono text-xs text-red-400 mb-0.5">Conversion failed</p>
@@ -280,7 +292,7 @@ export default function PDFtoPPT() {
           {/* Success */}
           {result && (
             <div className="success-card anim-scale-in">
-              <div className="flex items-center gap-4 mb-5">
+              <div className="flex items-center gap-4 mb-4">
                 <div className="w-9 h-9 border border-gold-400/40 flex items-center justify-center">
                   <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7"/>
@@ -289,29 +301,30 @@ export default function PDFtoPPT() {
                 <div>
                   <p className="font-display text-xl font-light text-white">PPTX downloaded</p>
                   <p className="font-mono text-xs text-white/30 mt-0.5">
-                    {result.numPages} slide{result.numPages !== 1 ? 's' : ''} ·{' '}
-                    {mode === 'editable' ? 'Background + editable text' : 'Image only'}
+                    {result.numPages} slide{result.numPages!==1?'s':''} · {
+                      mode==='auto'?'Smart mode':mode==='editable'?'Background inpainted':'Image only'
+                    }
                   </p>
                 </div>
               </div>
               <div className="flex gap-2">
                 <button onClick={convert} className="btn-primary flex-1 justify-center"
-                  style={{padding:'0.65rem 1rem', fontSize:'11px'}}>
+                  style={{padding:'0.65rem 1rem',fontSize:'11px'}}>
                   Convert again
                 </button>
                 <button onClick={reset} className="btn-ghost"
-                  style={{padding:'0.65rem 1rem', fontSize:'11px'}}>
+                  style={{padding:'0.65rem 1rem',fontSize:'11px'}}>
                   New file
                 </button>
               </div>
             </div>
           )}
 
-          {/* Action row */}
+          {/* Actions */}
           {!processing && !result && (
             <div className="flex gap-2 pt-1">
               <button onClick={convert} className="btn-primary flex-1 justify-center"
-                style={{padding:'0.7rem 1rem', fontSize:'12px'}}>
+                style={{padding:'0.7rem 1rem',fontSize:'12px'}}>
                 Convert to PPTX
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -319,7 +332,7 @@ export default function PDFtoPPT() {
                 </svg>
               </button>
               <button onClick={reset} className="btn-ghost"
-                style={{padding:'0.7rem 1rem', fontSize:'12px'}}>
+                style={{padding:'0.7rem 1rem',fontSize:'12px'}}>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>

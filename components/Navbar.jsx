@@ -23,6 +23,7 @@ const toolGroups = [
       { label: 'Excel to PDF', href: '/xlsx-to-pdf' },
       { label: 'HTML to PDF',  href: '/html-to-pdf' },
       { label: 'PDF to PPT',   href: '/pdf-to-ppt' },
+      { label: 'Image to PPT',  href: '/img-to-ppt' },
     ],
   },
   {
